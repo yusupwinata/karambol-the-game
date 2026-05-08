@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Karambol Nusantara</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            touch-action: none;
+            overflow: hidden;
+            /* Latar belakang gradien ceria dan cerah */
+            background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
+            background-size: 200% 200%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        #gameCanvas {
+            display: block;
+            touch-action: none;
+            background-color: #f59e0b; /* Warna kayu cerah */
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(180, 83, 9, 0.5);
+            border: 4px solid #fcd34d;
+        }
+        
+        #fxCanvas {
+            background-color: transparent; 
+        }
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(30, 58, 138, 0.4);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        .fun-card {
+            background: rgba(255, 255, 255, 0.25);
+            border: 4px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            backdrop-filter: blur(12px);
+        }
+        
+        .btn {
+            background: linear-gradient(to bottom, #f472b6, #e11d48);
+            color: white;
+            font-weight: 900;
+            padding: 1rem 2rem;
+            border-radius: 1.5rem;
+            border-bottom: 6px solid #be123c;
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 1.1rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(6px);
+            border-bottom-width: 0px;
+            margin-bottom: 6px; /* Kompensasi tinggi agar layout tidak loncat */
+        }
+
+        .btn-green {
+            background: linear-gradient(to bottom, #34d399, #059669);
+            border-bottom: 6px solid #047857;
+        }
+
+        .score-box {
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .score-box.active-turn {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: #fbbf24;
+            color: #1e1b4b;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.6);
+        }
+        .score-box.active-turn .score-label { color: #4338ca; }
+        .score-box.active-turn .score-number { color: #1e1b4b; }
+    </style>
+</head>
+<body class="text-white font-sans flex flex-col items-center justify-between h-screen w-screen relative select-none">
+
+    <!-- Notifikasi Pop-up (Dinaikkan ke paling atas, tidak di dalam top-bar flow) -->
+    <div id="toast-message" class="absolute top-4 left-1/2 transform -translate-x-1/2 text-white px-8 py-3 rounded-full font-extrabold text-sm md:text-base shadow-2xl border-4 border-white/50 opacity-0 transition-all duration-300 scale-90 whitespace-nowrap z-50">
+        Pesan Info
+    </div>
+
+    <!-- Top UI (Skor) -->
+    <div id="top-bar" class="w-full max-w-2xl flex flex-col items-center justify-start p-2 md:p-4 h-[80px] md:h-[100px] shrink-0 opacity-0 pointer-events-none transition-opacity duration-300 z-10 pt-4 md:pt-6">
+        <div class="flex justify-between w-full px-2">
+            <!-- P1 (Putih) sekarang di Kiri -->
+            <div class="score-box p-2 px-3 md:px-5 rounded-2xl backdrop-blur-md" id="p1-box">
+                <span class="score-label text-[10px] md:text-xs font-black uppercase tracking-wider block drop-shadow-sm">Pemain 1 (Putih)</span>
+                <span class="score-number text-2xl md:text-4xl font-black drop-shadow-md block" id="p1-points">0</span>
+            </div>
+            
+            <!-- P2 (Hitam) sekarang di Kanan -->
+            <div class="score-box p-2 px-3 md:px-5 rounded-2xl backdrop-blur-md text-right" id="p2-box">
+                <span class="score-label text-[10px] md:text-xs font-black uppercase tracking-wider block drop-shadow-sm" id="p2-name">Pemain 2 (Hitam)</span>
+                <span class="score-number text-2xl md:text-4xl font-black drop-shadow-md block" id="p2-points">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Area Tengah: Kanvas Papan Karambol -->
+    <div id="canvas-container" class="relative w-full max-w-2xl flex-grow flex items-center justify-center min-h-0 z-0">
+        <canvas id="gameCanvas" class="object-contain"></canvas>
+        <canvas id="fxCanvas" class="absolute pointer-events-none"></canvas>
+    </div>
+
+    <!-- Bottom UI (Pesan Panduan & Tombol) -->
+    <div id="bottom-bar" class="w-full max-w-2xl flex flex-col items-center justify-start p-2 md:p-4 h-[80px] md:h-[100px] shrink-0 relative opacity-0 pointer-events-none transition-opacity duration-300 z-10">
+        <div id="striker-message" class="bg-gradient-to-r from-blue-500 to-indigo-500 px-4 md:px-8 py-2 md:py-3 rounded-full text-sm md:text-base font-bold shadow-xl text-center border-2 border-white transition-colors duration-300">
+            Tempatkan Striker di Garis Anda
+        </div>
+        
+        <button id="btn-stop" class="absolute bottom-4 md:bottom-6 right-2 md:right-4 bg-red-500 hover:bg-red-400 text-white px-3 md:px-4 py-2 rounded-xl font-black text-[10px] md:text-xs uppercase border-b-4 border-red-700 active:border-b-0 active:translate-y-1 transition-all pointer-events-auto shadow-lg">
+            Berhenti
+        </button>
+    </div>
+
+    <!-- Menu Utama -->
+    <div id="menu-overlay" class="overlay">
+        <div class="fun-card p-6 md:p-8 rounded-3xl flex flex-col items-center max-w-md w-[90%] max-h-[90vh] overflow-y-auto">
+            <h1 class="text-5xl md:text-6xl font-black text-white mb-2 drop-shadow-xl text-center leading-tight tracking-tight" style="text-shadow: 3px 3px 0 #db2777, -1px -1px 0 #db2777, 1px -1px 0 #db2777, -1px 1px 0 #db2777, 1px 1px 0 #db2777;">
+                KARAMBOL<br><span class="text-yellow-300">SERU!</span>
+            </h1>
+            <p class="text-white/90 font-bold mb-6 text-center text-sm bg-black/20 py-2 px-4 rounded-full">Ayo main bersama teman atau robot!</p>
+            
+            <div class="flex flex-col gap-4 w-full">
+                <button id="btn-pve" class="btn w-full text-sm md:text-lg">🎮 Lawan Robot</button>
+                <button id="btn-pvp" class="btn btn-green w-full text-sm md:text-lg">🤝 Lawan Teman (Lokal)</button>
+                <button id="btn-howto" class="btn bg-gradient-to-b from-purple-400 to-purple-600 border-purple-800 w-full text-sm md:text-lg">❓ Cara Bermain</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Layar Cara Bermain -->
+    <div id="howto-overlay" class="overlay hidden">
+        <div class="fun-card p-6 md:p-8 rounded-3xl flex flex-col items-center max-w-md w-[90%] max-h-[90vh] overflow-y-auto">
+            <h2 class="text-3xl md:text-4xl font-black text-yellow-300 mb-4 drop-shadow-md text-center" style="text-shadow: 2px 2px 0 #b45309;">Cara Bermain</h2>
+            <div class="text-xs md:text-sm text-white/90 bg-black/20 p-4 rounded-2xl w-full mb-6 space-y-3">
+                <p><strong>🎯 Tujuan:</strong> Masukkan semua koin warnamu ke dalam lubang!</p>
+                <p><strong>🕹️ Kontrol:</strong> Geser mouse/jari di garis bawah untuk menaruh striker. Klik lalu tarik ke belakang untuk membidik. Lepaskan untuk menembak.</p>
+                <ul class="list-disc list-inside space-y-1 font-semibold ml-1 text-yellow-100">
+                    <li>Kamu harus menyentuh koinmu lebih dulu.</li>
+                    <li>Meleset atau sentuh koin musuh = Pelanggaran (Koinmu dikembalikan).</li>
+                    <li>Ratu (Merah) bernilai 3 poin. Amankan dengan memasukkan koinmu setelahnya!</li>
+                </ul>
+            </div>
+            <button id="btn-howto-back" class="btn bg-gradient-to-b from-gray-400 to-gray-600 border-gray-700 w-full text-sm md:text-lg">⬅️ Kembali</button>
+        </div>
+    </div>
+
+    <!-- Layar Game Over -->
+    <div id="game-over-overlay" class="overlay hidden">
+        <div class="fun-card p-6 md:p-8 rounded-3xl flex flex-col items-center max-w-md w-[90%] max-h-[90vh] overflow-y-auto text-center">
+            <div class="text-6xl mb-4">🏆</div>
+            <h2 class="text-4xl md:text-5xl font-black text-yellow-300 mb-6 drop-shadow-lg" id="winner-text" style="text-shadow: 2px 2px 0 #b45309;">Hore! P1 Menang!</h2>
+            
+            <div class="flex items-center justify-center gap-6 mb-8 text-3xl font-black bg-white/20 p-5 rounded-2xl border-2 border-white/30 w-full">
+                <div class="flex flex-col"><span class="text-sm text-white/80 uppercase">P1</span><span id="final-p1">0</span></div>
+                <div class="text-white/50">-</div>
+                <div class="flex flex-col"><span class="text-sm text-white/80 uppercase">P2</span><span id="final-p2">0</span></div>
+            </div>
+            
+            <button id="btn-restart" class="btn w-full mb-4">🔄 Main Lagi</button>
+            <button id="btn-menu" class="btn bg-gradient-to-b from-gray-400 to-gray-600 border-gray-700 w-full">🏠 Menu Utama</button>
+        </div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const fxCanvas = document.getElementById('fxCanvas');
+    const fxCtx = fxCanvas.getContext('2d');
+    
+    const topBar = document.getElementById('top-bar');
+    const bottomBar = document.getElementById('bottom-bar');
+    const menuOverlay = document.getElementById('menu-overlay');
+    const gameOverOverlay = document.getElementById('game-over-overlay');
+    
+    const btnPvE = document.getElementById('btn-pve');
+    const btnPvP = document.getElementById('btn-pvp');
+    const btnRestart = document.getElementById('btn-restart');
+    const btnMenu = document.getElementById('btn-menu');
+    const btnStop = document.getElementById('btn-stop');
+    const btnHowto = document.getElementById('btn-howto');
+    const btnHowtoBack = document.getElementById('btn-howto-back');
+    const howtoOverlay = document.getElementById('howto-overlay');
+    
+    const strikerMessage = document.getElementById('striker-message');
+    const p1PointsEl = document.getElementById('p1-points');
+    const p2PointsEl = document.getElementById('p2-points');
+    const toastEl = document.getElementById('toast-message');
+    
+    let boardSize = 600;
+    let pieces = [];
+    let pockets = [];
+    let striker = { x: 0, y: 0, radius: 15, vx: 0, vy: 0, mass: 1.5, active: false };
+    
+    let isPlaying = false;
+    let isPVE = true;
+    let turn = 1; // 1 = P1(Putih), 2 = P2/Bot(Hitam)
+    let scores = { 1: 0, 2: 0 };
+    let piecesLeft = { 1: 9, 2: 9, 3: 1 };
+    
+    // State Kontrol
+    let isPlacingStriker = false;
+    let isAiming = false;
+    let isMoving = false;
+    let dragStart = { x: 0, y: 0 };
+    let dragCurrent = { x: 0, y: 0 };
+
+    let pendingQueenCover = false;
+    let pocketedThisStrike = [];
+    let firstHitPiece = null; 
+    let toastTimeout = null;
+
+    // State Animasi Tangan Meletakkan Koin
+    let placeAnim = { active: false, x: 0, y: 0, life: 0 };
+
+    // Warna Ceria
+    const colorWhitePiece = '#ffffff';
+    const colorBlackPiece = '#312e81'; // Biru dongker cerah ganti hitam pekat
+    const colorQueen = '#f43f5e'; // Pink kemerahan
+    const confettiColors = ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6'];
+
+    let audioCtx = null;
+    function initAudio() {
+        if (!audioCtx) {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) audioCtx = new AudioContext();
+            } catch(e) {
+                console.warn("Audio tidak didukung", e);
+            }
+        }
+    }
+    
+    // Suara pantulan agak lebih tinggi nadanya agar terdengar lucu/cerah
+    function playHitSound(force) {
+        if(!audioCtx) return;
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(200 + (force * 3), audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(Math.min(force / 30, 0.4), audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    // Suara lubang seperti efek ajaib
+    function playPocketSound() {
+        if(!audioCtx) return;
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.15);
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+    }
+
+    function showToast(text, gradientStr = "linear-gradient(to right, #3b82f6, #8b5cf6)") {
+        toastEl.innerText = text;
+        toastEl.style.background = gradientStr;
+        toastEl.classList.remove('opacity-0', 'scale-90', '-translate-y-4');
+        toastEl.classList.add('opacity-100', 'scale-100', 'translate-y-0');
+        
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+            toastEl.classList.remove('opacity-100', 'scale-100', 'translate-y-0');
+            toastEl.classList.add('opacity-0', 'scale-90', '-translate-y-4');
+        }, 3000);
+    }
+
+    let particles = [];
+    let flickAnim = { active: false, startX: 0, startY: 0, angle: 0, life: 0 };
+
+    function createParticles(x, y) {
+        // Confetti effect
+        for(let i=0; i<30; i++) {
+            let color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+            particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
+                life: 1.0, color: color,
+                size: Math.random() * 4 + 2
+            });
+        }
+    }
+
+    function updateParticles() {
+        fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+        for(let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx; p.y += p.vy; 
+            p.vx *= 0.95; p.vy *= 0.95; // Perlambatan confetti
+            p.life -= 0.02;
+            if(p.life <= 0) {
+                particles.splice(i, 1);
+            } else {
+                fxCtx.globalAlpha = Math.max(0, p.life);
+                fxCtx.fillStyle = p.color;
+                fxCtx.beginPath(); fxCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); fxCtx.fill();
+            }
+        }
+        
+        // Animasi Tangan Menyentil (Diperkeren)
+        if (flickAnim.active) {
+            flickAnim.life -= 0.05; // Animasi lebih cepat
+            if (flickAnim.life <= 0) { flickAnim.active = false; } else {
+                fxCtx.save();
+                let progress = 1.0 - flickAnim.life;
+                
+                // Efek lingkaran "Poof!" angin
+                if(progress < 0.6) {
+                    fxCtx.beginPath();
+                    fxCtx.arc(flickAnim.startX, flickAnim.startY, progress * boardSize * 0.2, 0, Math.PI*2);
+                    fxCtx.strokeStyle = `rgba(255,255,255,${1 - progress/.6})`;
+                    fxCtx.lineWidth = boardSize * 0.01;
+                    fxCtx.stroke();
+                }
+
+                fxCtx.globalAlpha = Math.max(0, flickAnim.life);
+                const dist = progress * (boardSize * 0.15); // Jarak jari maju lebih jauh
+                const fx = flickAnim.startX + Math.cos(flickAnim.angle) * dist;
+                const fy = flickAnim.startY + Math.sin(flickAnim.angle) * dist;
+                
+                fxCtx.translate(fx, fy); fxCtx.rotate(flickAnim.angle + Math.PI/2);
+                fxCtx.font = `${boardSize * 0.12}px Arial`; // Ukuran jari lebih besar
+                fxCtx.textAlign = "center"; fxCtx.textBaseline = "middle";
+                fxCtx.fillText("👆", 0, boardSize * 0.04); 
+                fxCtx.restore();
+            }
+        }
+
+        // Animasi Tangan Meletakkan Koin
+        if (placeAnim.active) {
+            placeAnim.life -= 0.02; // Fade out perlahan
+            if (placeAnim.life <= 0) { placeAnim.active = false; } else {
+                fxCtx.save();
+                fxCtx.globalAlpha = Math.min(1, placeAnim.life * 2); 
+                let progress = 1.0 - placeAnim.life;
+                
+                // Efek tangan turun dari atas
+                let dropOffset = Math.max(0, (0.3 - progress) * 150); 
+                
+                fxCtx.translate(placeAnim.x, placeAnim.y - dropOffset);
+                fxCtx.font = `${boardSize * 0.12}px Arial`; 
+                fxCtx.textAlign = "center"; fxCtx.textBaseline = "bottom";
+                fxCtx.fillText("👇", 0, 0); // Emoji Tangan
+                
+                // Efek cincin sorotan
+                fxCtx.beginPath();
+                fxCtx.arc(0, boardSize * 0.02, boardSize * 0.05, 0, Math.PI*2);
+                fxCtx.strokeStyle = `rgba(255, 255, 255, ${placeAnim.life})`;
+                fxCtx.lineWidth = 4;
+                fxCtx.stroke();
+                
+                fxCtx.restore();
+            }
+        }
+        
+        fxCtx.globalAlpha = 1.0;
+    }
+
+    function resize() {
+        const container = document.getElementById('canvas-container');
+        let cw = container.clientWidth;
+        let ch = container.clientHeight;
+        
+        let size = Math.min(cw, ch) - 16; 
+        size = Math.max(size, 250); 
+        boardSize = Math.floor(size);
+        
+        canvas.width = boardSize; canvas.height = boardSize;
+        fxCanvas.width = boardSize; fxCanvas.height = boardSize;
+
+        canvas.style.width = `${boardSize}px`; canvas.style.height = `${boardSize}px`;
+        fxCanvas.style.width = `${boardSize}px`; fxCanvas.style.height = `${boardSize}px`;
+        fxCanvas.style.top = `${(ch - boardSize) / 2}px`; fxCanvas.style.left = `${(cw - boardSize) / 2}px`;
+
+        setupPockets();
+    }
+
+    window.addEventListener('resize', () => { if (!isPlaying) resize(); });
+
+    function setupPockets() {
+        const pRadius = boardSize * 0.055;
+        const margin = boardSize * 0.05 + pRadius * 0.2;
+        pockets = [
+            {x: margin, y: margin, r: pRadius}, {x: boardSize - margin, y: margin, r: pRadius},
+            {x: margin, y: boardSize - margin, r: pRadius}, {x: boardSize - margin, y: boardSize - margin, r: pRadius}
+        ];
+    }
+
+    function setupGame() {
+        pieces = []; scores = { 1: 0, 2: 0 }; piecesLeft = { 1: 9, 2: 9, 3: 1 };
+        turn = 1; pendingQueenCover = false; pocketedThisStrike = []; firstHitPiece = null;
+        
+        updateUI();
+        const cx = boardSize / 2; const cy = boardSize / 2;
+        const pr = boardSize * 0.035; striker.radius = boardSize * 0.045;
+
+        pieces.push({ x: cx, y: cy, radius: pr, vx: 0, vy: 0, mass: 1, type: 3, active: true, color: colorQueen });
+        
+        const angles = [0, 60, 120, 180, 240, 300];
+        for (let i = 0; i < 6; i++) {
+            let a = angles[i] * Math.PI / 180;
+            let type = i % 2 === 0 ? 1 : 2;
+            let color = type === 1 ? colorWhitePiece : colorBlackPiece;
+            pieces.push({ x: cx + Math.cos(a) * (pr * 2.1), y: cy + Math.sin(a) * (pr * 2.1), radius: pr, vx: 0, vy: 0, mass: 1, type: type, active: true, color: color });
+        }
+        
+        for (let i = 0; i < 12; i++) {
+            let a = (i * 30) * Math.PI / 180;
+            let type = (i % 4 === 0 || i % 4 === 1) ? 1 : 2;
+            if (i > 6) type = type === 1 ? 2 : 1;
+            let color = type === 1 ? colorWhitePiece : colorBlackPiece;
+            let dist = i % 2 === 0 ? (pr * 4.2) : (pr * 3.6);
+            pieces.push({ x: cx + Math.cos(a) * dist, y: cy + Math.sin(a) * dist, radius: pr, vx: 0, vy: 0, mass: 1, type: type, active: true, color: color });
+        }
+        startTurn();
+    }
+
+    function startTurn() {
+        isMoving = false; isAiming = false;
+        striker.active = true; striker.vx = 0; striker.vy = 0;
+        firstHitPiece = null; 
+        
+        const baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
+        striker.y = baselineY; striker.x = boardSize / 2;
+        isPlacingStriker = true;
+        
+        // Update UI Box Styling Ceria
+        const p1Box = document.getElementById('p1-box');
+        const p2Box = document.getElementById('p2-box');
+        
+        if (turn === 1) {
+            p1Box.classList.add('active-turn'); p2Box.classList.remove('active-turn');
+        } else {
+            p2Box.classList.add('active-turn'); p1Box.classList.remove('active-turn');
+        }
+        
+        strikerMessage.classList.remove('hidden');
+        if (pendingQueenCover) {
+            strikerMessage.innerText = "⭐ Ayo! Masukkan koinmu untuk selamatkan Ratu!";
+            strikerMessage.style.background = "linear-gradient(to right, #f59e0b, #d97706)";
+        } else {
+            let trg = turn === 1 ? "Putih" : "Hitam";
+            strikerMessage.innerText = `🎯 Giliran Pemain ${turn}. Incar Koin ${trg}!`;
+            strikerMessage.style.background = turn === 1 ? "linear-gradient(to right, #3b82f6, #6366f1)" : "linear-gradient(to right, #6b7280, #374151)";
+        }
+
+        if (turn === 2 && isPVE) botTurn();
+    }
+
+    function isPlacementValid(x, y) {
+        for (let i = 0; i < pieces.length; i++) {
+            let p = pieces[i];
+            if (!p.active) continue;
+            let dx = p.x - x; let dy = p.y - y;
+            if (Math.sqrt(dx*dx + dy*dy) < (p.radius + striker.radius + 1)) return false;
+        }
+        return true;
+    }
+
+    function getMousePos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        let clientX = e.clientX; let clientY = e.clientY;
+        if (clientX === undefined) {
+            if (e.touches && e.touches.length > 0) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; } 
+            else if (e.changedTouches && e.changedTouches.length > 0) { clientX = e.changedTouches[0].clientX; clientY = e.changedTouches[0].clientY; }
+        }
+        return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+    }
+
+    function isPointInStriker(x, y) {
+        const dx = x - striker.x; const dy = y - striker.y;
+        return Math.sqrt(dx*dx + dy*dy) <= striker.radius * 2.5;
+    }
+
+    function handleStart(e) {
+        if (!isPlaying || isMoving || (turn === 2 && isPVE)) return;
+        const pos = getMousePos(e);
+        
+        if (isPlacingStriker) {
+            if (!isPlacementValid(striker.x, striker.y)) {
+                showToast("Oops! Terhalang koin lain. Geser dikit yuk!", "linear-gradient(to right, #ef4444, #b91c1c)");
+                return;
+            }
+            isPlacingStriker = false;
+            strikerMessage.innerText = "Tarik ke belakang, bidik, dan lepaskan!";
+            strikerMessage.style.background = "linear-gradient(to right, #10b981, #059669)"; // Hijau ceria
+            return;
+        }
+
+        if (!isPlacingStriker && !isAiming && !isMoving) {
+            if (isPointInStriker(pos.x, pos.y)) {
+                isAiming = true; dragStart = pos; dragCurrent = pos;
+            }
+        }
+    }
+
+    function handleMove(e) {
+        if (!isPlaying || (turn === 2 && isPVE)) return;
+        const pos = getMousePos(e);
+        
+        if (isPlacingStriker) {
+            let oldX = striker.x; let oldY = striker.y;
+            let baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
+            let minX = boardSize * 0.2; let maxX = boardSize * 0.8;
+            striker.x = Math.max(minX, Math.min(maxX, pos.x)); striker.y = baselineY;
+            if (!isPlacementValid(striker.x, striker.y)) { striker.x = oldX; striker.y = oldY; }
+        } else if (isAiming) {
+            dragCurrent = pos;
+        }
+    }
+
+    function handleEnd(e) {
+        if (!isPlaying || !isAiming || (turn === 2 && isPVE)) return;
+        isAiming = false;
+        
+        let dx = dragStart.x - dragCurrent.x; let dy = dragStart.y - dragCurrent.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+        
+        if (dist > 5) {
+            const forceScale = 0.2;
+            let force = Math.min(dist * forceScale, 35);
+            const launchDx = dx / dist; const launchDy = dy / dist;
+
+            striker.vx = launchDx * force; striker.vy = launchDy * force;
+            flickAnim = { active: true, startX: striker.x - launchDx * striker.radius, startY: striker.y - launchDy * striker.radius, angle: Math.atan2(launchDy, launchDx), life: 1.0 };
+            isMoving = true;
+            strikerMessage.classList.add('hidden');
+            playHitSound(force);
+        }
+    }
+
+    canvas.addEventListener('mousedown', handleStart);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('touchstart', (e) => { if(e.target === canvas) e.preventDefault(); handleStart(e); }, {passive: false});
+    window.addEventListener('touchmove', (e) => { if (isPlaying && (isAiming || isPlacingStriker)) { e.preventDefault(); } handleMove(e); }, {passive: false});
+    window.addEventListener('touchend', handleEnd);
+
+    function botTurn() {
+        if (!isPlaying) return;
+        strikerMessage.innerText = "🤖 Robot sedang mikir...";
+        
+        setTimeout(() => {
+            let baselineY = boardSize * 0.15;
+            striker.y = baselineY;
+            let attempts = 0; striker.x = boardSize / 2;
+            while (!isPlacementValid(striker.x, striker.y) && attempts < 50) {
+                striker.x = boardSize * 0.2 + Math.random() * (boardSize * 0.6); attempts++;
+            }
+            isPlacingStriker = false;
+            
+            let target = null; let minDist = Infinity;
+            pieces.forEach(p => {
+                if (p.active && ((p.type === 2) || (p.type === 3 && !pendingQueenCover))) {
+                    let dx = p.x - striker.x; let dy = p.y - striker.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < minDist) { minDist = dist; target = p; }
+                }
+            });
+
+            let tx = target ? target.x : boardSize/2;
+            let ty = target ? target.y : boardSize;
+            
+            tx += (Math.random() - 0.5) * 20; ty += (Math.random() - 0.5) * 20;
+            let dx = tx - striker.x; let dy = ty - striker.y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            let force = 20 + Math.random() * 10;
+            
+            striker.vx = (dx / dist) * force; striker.vy = (dy / dist) * force;
+            flickAnim = { active: true, startX: striker.x - (dx/dist)*striker.radius, startY: striker.y - (dy/dist)*striker.radius, angle: Math.atan2(dy/dist, dx/dist), life: 1.0 };
+            
+            isMoving = true; strikerMessage.classList.add('hidden'); playHitSound(force);
+        }, 1200);
+    }
+
+    function resolveCollision(p1, p2) {
+        let dx = p2.x - p1.x; let dy = p2.y - p1.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+        let overlap = (p1.radius + p2.radius) - dist;
+        
+        if (overlap > 0 && dist > 0) {
+            let nx = dx / dist; let ny = dy / dist;
+            let moveRatio = p1.mass / (p1.mass + p2.mass);
+            p1.x -= nx * overlap * (1 - moveRatio); p1.y -= ny * overlap * (1 - moveRatio);
+            p2.x += nx * overlap * moveRatio; p2.y += ny * overlap * moveRatio;
+
+            let kx = (p1.vx - p2.vx); let ky = (p1.vy - p2.vy);
+            let p = 2 * (nx * kx + ny * ky) / (p1.mass + p2.mass);
+            p1.vx -= p * p2.mass * nx; p1.vy -= p * p2.mass * ny;
+            p2.vx += p * p1.mass * nx; p2.vy += p * p1.mass * ny;
+
+            let impactForce = Math.sqrt(kx*kx + ky*ky);
+            if(impactForce > 1) playHitSound(impactForce);
+            return true;
+        }
+        return false;
+    }
+
+    function checkPocket(p) {
+        for (let pocket of pockets) {
+            let dx = p.x - pocket.x; let dy = p.y - pocket.y;
+            // Radius penyedotan diperbesar 30% agar koin langsung tertelan saat di bibir lubang
+            if (Math.sqrt(dx*dx + dy*dy) < pocket.r * 1.3) return true;
+        }
+        return false;
+    }
+
+    function isPlacementValidForPiece(pToCheck, x, y) {
+        let margin = boardSize * 0.05 + pToCheck.radius;
+        if (x < margin || x > boardSize - margin || y < margin || y > boardSize - margin) return false;
+        
+        let allEntities = [striker, ...pieces];
+        for (let p of allEntities) {
+            if (!p.active || p === pToCheck) continue;
+            let dx = p.x - x; let dy = p.y - y;
+            if (Math.sqrt(dx*dx + dy*dy) < (p.radius + pToCheck.radius + 2)) return false;
+        }
+        return true;
+    }
+
+    function returnPieceToBoard(type) {
+        let p = pieces.find(piece => piece.type === type && !piece.active);
+        if (p) {
+            p.active = true; p.vx = 0; p.vy = 0;
+            let cx = boardSize / 2; let cy = boardSize / 2; p.x = cx; p.y = cy;
+            let radius = 0; let angle = 0; let attempts = 0;
+            while (!isPlacementValidForPiece(p, p.x, p.y) && attempts < 200) {
+                radius += 0.5; angle += 0.5;
+                p.x = cx + Math.cos(angle) * radius; p.y = cy + Math.sin(angle) * radius; attempts++;
+            }
+            
+            // Trigger animasi jari meletakkan koin
+            placeAnim = { active: true, x: p.x, y: p.y, life: 1.0 };
+        }
+    }
+
+    function switchTurn() {
+        turn = turn === 1 ? 2 : 1;
+        startTurn();
+    }
+
+    function resolveEndTurn() {
+        let fouled = false;
+        let gotOwnPiece = false;
+        let pocketedQueenThisStrike = false;
+        let foulReason = "";
+        
+        for (let p of pocketedThisStrike) {
+            if (p === striker) {
+                fouled = true; foulReason = "Striker masuk lubang!";
+            } else if (p.type === turn) {
+                gotOwnPiece = true; scores[turn]++; piecesLeft[turn]--;
+            } else if (p.type === (turn === 1 ? 2 : 1)) {
+                let opp = turn === 1 ? 2 : 1; scores[opp]++; piecesLeft[opp]--;
+            } else if (p.type === 3) {
+                pocketedQueenThisStrike = true; piecesLeft[3]--;
+            }
+        }
+        pocketedThisStrike = [];
+
+        if (!fouled && firstHitPiece === null) {
+            fouled = true; foulReason = "Meleset! Tidak kena koin satupun.";
+        }
+        else if (!fouled && firstHitPiece.type === (turn === 1 ? 2 : 1)) {
+            fouled = true; foulReason = "Yah! Nabrak koin musuh duluan.";
+        }
+        else if (!fouled && piecesLeft[turn] === 0 && piecesLeft[3] > 0 && !pocketedQueenThisStrike) {
+            fouled = true; foulReason = "Koin terakhir masuk sebelum Ratu!";
+        }
+
+        if (fouled) {
+            scores[turn] = Math.max(0, scores[turn] - 1);
+            if (piecesLeft[turn] < 9) { returnPieceToBoard(turn); piecesLeft[turn]++; }
+
+            if (pocketedQueenThisStrike) {
+                returnPieceToBoard(3); piecesLeft[3]++;
+            } else if (pendingQueenCover) {
+                returnPieceToBoard(3); piecesLeft[3]++;
+                pendingQueenCover = false;
+                showToast("💥 Gagal Cover! Ratu kembali ke tengah.", "linear-gradient(to right, #ef4444, #b91c1c)");
+            } else {
+                showToast(`🚨 Pelanggaran: ${foulReason}`, "linear-gradient(to right, #ef4444, #991b1b)");
+            }
+            
+            updateUI(); setTimeout(switchTurn, 1000);
+        } else {
+            let extraTurn = false;
+
+            if (pocketedQueenThisStrike) {
+                extraTurn = true;
+                if (gotOwnPiece) {
+                    pendingQueenCover = false; scores[turn] += 3;
+                    showToast("🌟 Keren Banget! Ratu aman ditanganmu!", "linear-gradient(to right, #10b981, #059669)");
+                } else {
+                    pendingQueenCover = true;
+                    showToast("👑 Ratu masuk! Cepat cover pakai koinmu!", "linear-gradient(to right, #f59e0b, #d97706)");
+                }
+            } else if (pendingQueenCover) {
+                if (gotOwnPiece) {
+                    pendingQueenCover = false; scores[turn] += 3;
+                    showToast("🎉 Yeay! Ratu berhasil diamankan!", "linear-gradient(to right, #10b981, #059669)"); extraTurn = true;
+                } else {
+                    returnPieceToBoard(3); piecesLeft[3]++; pendingQueenCover = false;
+                    showToast("😢 Yah gagal cover Ratu! Ratu dikembalikan.", "linear-gradient(to right, #ef4444, #b91c1c)");
+                }
+            } else if (gotOwnPiece) {
+                extraTurn = true; showToast("🔥 Tepat Sasaran! Kamu main lagi!", "linear-gradient(to right, #ec4899, #db2777)");
+            }
+
+            updateUI();
+            if (piecesLeft[1] === 0 && piecesLeft[3] === 0 && !pendingQueenCover) { endGame(1); return; }
+            if (piecesLeft[2] === 0 && piecesLeft[3] === 0 && !pendingQueenCover) { endGame(2); return; }
+
+            if (extraTurn) { startTurn(); } else { switchTurn(); }
+        }
+    }
+
+    function updatePhysics() {
+        if (!isMoving) return;
+        let movingPieces = 0;
+        let allEntities = [striker, ...pieces.filter(p => p.active)];
+        const friction = 0.985;
+
+        for (let i = 0; i < allEntities.length; i++) {
+            let p = allEntities[i];
+            if (!p.active) continue;
+
+            p.x += p.vx; p.y += p.vy;
+            p.vx *= friction; p.vy *= friction;
+
+            if (checkPocket(p)) {
+                p.active = false; playPocketSound(); createParticles(p.x, p.y);
+                pocketedThisStrike.push(p); continue; 
+            }
+
+            // Dinding Pantul Normal yang Mutlak (Mencegah koin nembus dinding manapun)
+            let margin = boardSize * 0.05;
+            
+            if (p.x - p.radius < margin) { p.x = margin + p.radius; p.vx *= -0.8; }
+            if (p.x + p.radius > boardSize - margin) { p.x = boardSize - margin - p.radius; p.vx *= -0.8; }
+            if (p.y - p.radius < margin) { p.y = margin + p.radius; p.vy *= -0.8; }
+            if (p.y + p.radius > boardSize - margin) { p.y = boardSize - margin - p.radius; p.vy *= -0.8; }
+
+            if (Math.abs(p.vx) > 0.05 || Math.abs(p.vy) > 0.05) { movingPieces++; } else { p.vx = 0; p.vy = 0; }
+        }
+
+        for (let i = 0; i < allEntities.length; i++) {
+            for (let j = i + 1; j < allEntities.length; j++) {
+                if(allEntities[i].active && allEntities[j].active) {
+                    if (resolveCollision(allEntities[i], allEntities[j])) {
+                        let e1 = allEntities[i]; let e2 = allEntities[j];
+                        if ((e1 === striker || e2 === striker) && firstHitPiece === null) {
+                            firstHitPiece = (e1 === striker) ? e2 : e1;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (movingPieces === 0) {
+            isMoving = false; striker.active = false;
+            resolveEndTurn();
+        }
+    }
+
+    function updateUI() {
+        p1PointsEl.innerText = scores[1]; p2PointsEl.innerText = scores[2];
+        document.getElementById('p2-name').innerText = isPVE ? "Robot (Hitam)" : "Pemain 2 (Hitam)";
+    }
+
+    function endGame(winner) {
+        isPlaying = false; gameOverOverlay.classList.remove('hidden');
+        topBar.classList.add('opacity-0', 'pointer-events-none'); bottomBar.classList.add('opacity-0', 'pointer-events-none');
+        document.getElementById('final-p1').innerText = scores[1]; document.getElementById('final-p2').innerText = scores[2];
+        
+        let winText = winner === 1 ? "Pemain 1 Menang!" : (isPVE ? "Robot Menang!" : "Pemain 2 Menang!");
+        document.getElementById('winner-text').innerText = winText;
+        
+        // Tembak confetti banyak banyak di tengah layar
+        createParticles(boardSize/2, boardSize/2);
+        createParticles(boardSize/3, boardSize/2);
+        createParticles(boardSize/1.5, boardSize/2);
+    }
+
+    function draw() {
+        // Papan cerah
+        ctx.fillStyle = '#fbbf24'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        let wallT = boardSize * 0.05; ctx.strokeStyle = '#b45309'; ctx.lineWidth = wallT;
+        ctx.strokeRect(wallT/2, wallT/2, canvas.width - wallT, canvas.height - wallT);
+
+        const cx = canvas.width / 2; const cy = canvas.height / 2;
+        ctx.strokeStyle = '#d97706'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(cx, cy, boardSize * 0.15, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, boardSize * 0.16, 0, Math.PI*2); ctx.stroke();
+        
+        const drawBaseline = (y) => {
+            ctx.beginPath(); ctx.moveTo(boardSize * 0.2, y); ctx.lineTo(boardSize * 0.8, y); ctx.stroke();
+            ctx.beginPath(); ctx.arc(boardSize*0.2, y, boardSize*0.02, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(boardSize*0.8, y, boardSize*0.02, 0, Math.PI*2); ctx.stroke();
+        };
+        drawBaseline(boardSize * 0.15); drawBaseline(boardSize * 0.85); drawBaseline(boardSize * 0.5);  
+
+        pockets.forEach(p => {
+            ctx.fillStyle = '#1e1b4b'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#78350f'; ctx.lineWidth = 3; ctx.stroke();
+        });
+
+        pieces.forEach(p => {
+            if (!p.active) return;
+            ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
+            
+            // Efek kilap/cerah pada koin
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.radius * 0.6, 0, Math.PI * 2); ctx.stroke();
+            
+            // Pantulan cahaya (Highlight imut)
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.beginPath(); ctx.arc(p.x - p.radius*0.3, p.y - p.radius*0.3, p.radius*0.2, 0, Math.PI*2); ctx.fill();
+        });
+
+        if (striker.active) {
+            ctx.fillStyle = pendingQueenCover ? '#f59e0b' : '#38bdf8';
+            ctx.beginPath(); ctx.arc(striker.x, striker.y, striker.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = pendingQueenCover ? '#b45309' : '#0284c7'; ctx.lineWidth = 3; ctx.stroke();
+            ctx.fillStyle = pendingQueenCover ? '#fef3c7' : '#e0f2fe';
+            ctx.beginPath(); ctx.arc(striker.x, striker.y, striker.radius * 0.5, 0, Math.PI * 2); ctx.fill();
+
+            if (isAiming) {
+                let dx = dragStart.x - dragCurrent.x; let dy = dragStart.y - dragCurrent.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist > 5) {
+                    ctx.beginPath(); ctx.moveTo(striker.x, striker.y);
+                    let vDist = Math.min(dist * 1.5, 150); let angle = Math.atan2(dy, dx); 
+                    ctx.lineTo(striker.x + Math.cos(angle) * vDist, striker.y + Math.sin(angle) * vDist);
+                    let pR = Math.min(dist / 100, 1);
+                    ctx.strokeStyle = `rgb(255, ${Math.floor(255 - pR*255)}, ${Math.floor(255 - pR*100)})`; // Garis bidik jadi oranye/kuning
+                    ctx.lineWidth = 4 + (pR * 4); ctx.setLineDash([8, 8]); ctx.stroke(); ctx.setLineDash([]);
+                }
+            }
+        }
+    }
+
+    function gameLoop() {
+        if (isPlaying) { updatePhysics(); draw(); updateParticles(); }
+        else if (gameOverOverlay.classList.contains('hidden') === false) { updateParticles(); } // Biarkan confetti jalan di game over
+        requestAnimationFrame(gameLoop);
+    }
+
+    btnPvE.addEventListener('click', () => { isPVE = true; startGame(); });
+    btnPvP.addEventListener('click', () => { isPVE = false; startGame(); });
+    btnRestart.addEventListener('click', startGame);
+    
+    btnHowto.addEventListener('click', () => {
+        menuOverlay.classList.add('hidden');
+        howtoOverlay.classList.remove('hidden');
+    });
+
+    btnHowtoBack.addEventListener('click', () => {
+        howtoOverlay.classList.add('hidden');
+        menuOverlay.classList.remove('hidden');
+    });
+    
+    btnMenu.addEventListener('click', () => {
+        gameOverOverlay.classList.add('hidden'); menuOverlay.classList.remove('hidden'); 
+        topBar.classList.add('opacity-0', 'pointer-events-none'); bottomBar.classList.add('opacity-0', 'pointer-events-none');
+        isPlaying = false;
+    });
+
+    btnStop.addEventListener('click', () => {
+        isPlaying = false; menuOverlay.classList.remove('hidden'); gameOverOverlay.classList.add('hidden');
+        topBar.classList.add('opacity-0', 'pointer-events-none'); bottomBar.classList.add('opacity-0', 'pointer-events-none'); 
+        toastEl.classList.remove('opacity-100', 'scale-100', 'translate-y-0');
+        toastEl.classList.add('opacity-0', 'scale-90', '-translate-y-4');
+    });
+
+    function startGame() {
+        initAudio(); resize(); setupGame(); isPlaying = true;
+        menuOverlay.classList.add('hidden'); gameOverOverlay.classList.add('hidden'); 
+        topBar.classList.remove('opacity-0', 'pointer-events-none'); 
+        bottomBar.classList.remove('opacity-0', 'pointer-events-none');
+        toastEl.classList.remove('opacity-100', 'scale-100', 'translate-y-0');
+        toastEl.classList.add('opacity-0', 'scale-90', '-translate-y-4');
+    }
+
+    resize(); draw(); gameLoop();
+
+</script>
+</body>
+</html>
