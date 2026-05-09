@@ -472,9 +472,11 @@
         
         for (let i = 0; i < 12; i++) {
             let a = (i * 30) * Math.PI / 180;
-            let type = (i % 4 === 0 || i % 4 === 1) ? 1 : 2;
-            if (i > 6) type = type === 1 ? 2 : 1;
+            
+            // Perbaikan: Pola selang-seling konsisten memastikan tepat 6 koin Putih dan 6 koin Hitam di luar (Total menjadi 9 vs 9)
+            let type = (i % 2 === 0) ? 1 : 2; 
             let color = type === 1 ? colorWhitePiece : colorBlackPiece;
+            
             let dist = i % 2 === 0 ? (pr * 4.2) : (pr * 3.6);
             pieces.push({ x: cx + Math.cos(a) * dist, y: cy + Math.sin(a) * dist, radius: pr, vx: 0, vy: 0, mass: 1, type: type, active: true, color: color });
         }
