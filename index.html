@@ -762,7 +762,10 @@
                 showToast(`🚨 Pelanggaran: ${foulReason}`, "linear-gradient(to right, #ef4444, #991b1b)");
             }
             
-            updateUI(); setTimeout(switchTurn, 1000);
+            updateUI(); 
+            // Cek Menang Setelah Foul (Jika koin musuh habis karena foul ini)
+            if (checkWinCondition()) return; 
+            setTimeout(switchTurn, 1000);
         } else {
             let extraTurn = false;
 
@@ -789,22 +792,26 @@
 
             updateUI();
             
-            // Perbaikan Bug: Game langsung selesai jika koin salah satu pemain habis
-            if ((piecesLeft[1] === 0 || piecesLeft[2] === 0) && !pendingQueenCover) { 
-                let winner = 1;
-                // Penentuan pemenang berdasarkan skor yang paling tinggi
-                if (scores[2] > scores[1]) {
-                    winner = 2;
-                } else if (scores[1] === scores[2]) {
-                    // Jika poin seri, yang koinnya habis duluan yang menang
-                    winner = piecesLeft[1] === 0 ? 1 : 2; 
-                }
-                endGame(winner); 
-                return; 
-            }
+            // Cek Menang Secara Ketat!
+            if (checkWinCondition()) return;
 
             if (extraTurn) { startTurn(); } else { switchTurn(); }
         }
+    }
+
+    // Fungsi Pembantu Khusus Untuk Mengecek Kemenangan dengan Pasti
+    function checkWinCondition() {
+        if ((piecesLeft[1] === 0 || piecesLeft[2] === 0) && !pendingQueenCover) { 
+            let winner = 1;
+            if (scores[2] > scores[1]) {
+                winner = 2;
+            } else if (scores[1] === scores[2]) {
+                winner = piecesLeft[1] === 0 ? 1 : 2; 
+            }
+            endGame(winner); 
+            return true; // Return TRUE agar eksekusi turn berhenti total
+        }
+        return false;
     }
 
     function updatePhysics() {
