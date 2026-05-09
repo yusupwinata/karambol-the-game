@@ -240,6 +240,7 @@
     // State Animasi
     let placeAnim = { active: false, x: 0, y: 0, life: 0 };
     let tutorialAnimTime = 0; // State untuk tangan penunjuk geser
+    let pullTutorialAnimTime = 0; // State BARU untuk tangan pencontoh tarikan bidikan
 
     // Warna Ceria
     const colorWhitePiece = '#ffffff';
@@ -408,6 +409,56 @@
             fxCtx.stroke();
             fxCtx.restore();
         }
+
+        // Animasi Tutorial Menarik (Drag) Striker Setelah Diletakkan
+        if (!isPlacingStriker && !isAiming && !isMoving && !(turn === 2 && isPVE) && striker.active) {
+            pullTutorialAnimTime += 0.03;
+            
+            // Siklus animasi berulang: 0.0 ke 1.0
+            let cycle = pullTutorialAnimTime % 1.5; 
+            
+            // Hanya jalankan animasi saat siklus 0 - 1, sisanya jeda
+            if (cycle < 1.0) {
+                // Jari bergerak mundur dari striker
+                let pullDistance = cycle * (boardSize * 0.15); 
+                
+                // Jika P1, tarik ke bawah. Jika P2, tarik ke atas.
+                let pullDir = turn === 1 ? 1 : -1; 
+                
+                let handX = striker.x;
+                let handY = striker.y + (pullDistance * pullDir);
+
+                fxCtx.save();
+                fxCtx.font = `${boardSize * 0.08}px Arial`;
+                fxCtx.textAlign = "center"; fxCtx.textBaseline = "middle";
+                
+                // Fade in saat menyentuh striker, fade out saat ditarik maksimal
+                let alpha = cycle < 0.2 ? cycle / 0.2 : (1.0 - cycle) / 0.8;
+                fxCtx.globalAlpha = Math.max(0, alpha) * 0.8; 
+                
+                fxCtx.fillText("👆", handX, handY + (boardSize * 0.02 * pullDir));
+
+                // Gambar garis kekeran contoh (berlawanan arah tarikan)
+                if (pullDistance > 5) {
+                    fxCtx.beginPath(); 
+                    fxCtx.moveTo(striker.x, striker.y);
+                    
+                    let visualDist = pullDistance * 1.5; 
+                    let endX = striker.x;
+                    let endY = striker.y - (visualDist * pullDir); // Menghadap ke tengah papan
+                    
+                    fxCtx.lineTo(endX, endY);
+                    
+                    let pR = Math.min(pullDistance / 100, 1);
+                    fxCtx.strokeStyle = `rgba(255, ${Math.floor(255 - pR*255)}, ${Math.floor(255 - pR*100)}, ${alpha})`; 
+                    fxCtx.lineWidth = 4; 
+                    fxCtx.setLineDash([5, 5]); 
+                    fxCtx.stroke(); 
+                    fxCtx.setLineDash([]);
+                }
+                fxCtx.restore();
+            }
+        }
         
         fxCtx.globalAlpha = 1.0;
     }
@@ -477,6 +528,7 @@
         firstHitPiece = null; 
         isDraggingToPlace = false;
         tutorialAnimTime = 0;
+        pullTutorialAnimTime = 0; // Reset waktu tutorial tarikan
         
         const baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
         striker.y = baselineY; 
