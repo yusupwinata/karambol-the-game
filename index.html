@@ -24,14 +24,11 @@
         #gameCanvas {
             display: block;
             touch-action: none;
-            background-color: #f59e0b; /* Warna kayu cerah */
+            /* Background transparan karena kita menggambar background kayunya di dalam canvas agar 1 layer */
+            background-color: transparent; 
             border-radius: 20px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(180, 83, 9, 0.5);
-            border: 4px solid #fcd34d;
-        }
-        
-        #fxCanvas {
-            background-color: transparent; 
+            /* Border asli dipindah ke dalam canvas draw() agar presisi 100% */
         }
 
         .overlay {
@@ -71,7 +68,7 @@
         .btn:active {
             transform: translateY(6px);
             border-bottom-width: 0px;
-            margin-bottom: 6px; /* Kompensasi tinggi agar layout tidak loncat */
+            margin-bottom: 6px; 
         }
 
         .btn-green {
@@ -99,7 +96,6 @@
 </head>
 <body class="text-white font-sans flex flex-col items-center justify-between h-screen w-screen relative select-none">
 
-    <!-- Notifikasi Pop-up (Dinaikkan ke paling atas, tidak di dalam top-bar flow) -->
     <div id="toast-message" class="absolute top-4 left-1/2 transform -translate-x-1/2 text-white px-8 py-3 rounded-full font-extrabold text-sm md:text-base shadow-2xl border-4 border-white/50 opacity-0 transition-all duration-300 scale-90 whitespace-nowrap z-50">
         Pesan Info
     </div>
@@ -107,13 +103,11 @@
     <!-- Top UI (Skor) -->
     <div id="top-bar" class="w-full max-w-2xl flex flex-col items-center justify-start p-2 md:p-4 h-[80px] md:h-[100px] shrink-0 opacity-0 pointer-events-none transition-opacity duration-300 z-10 pt-4 md:pt-6">
         <div class="flex justify-between w-full px-2">
-            <!-- P1 (Putih) sekarang di Kiri -->
             <div class="score-box p-2 px-3 md:px-5 rounded-2xl backdrop-blur-md" id="p1-box">
                 <span class="score-label text-[10px] md:text-xs font-black uppercase tracking-wider block drop-shadow-sm">Pemain 1 (Putih)</span>
                 <span class="score-number text-2xl md:text-4xl font-black drop-shadow-md block" id="p1-points">0</span>
             </div>
             
-            <!-- P2 (Hitam) sekarang di Kanan -->
             <div class="score-box p-2 px-3 md:px-5 rounded-2xl backdrop-blur-md text-right" id="p2-box">
                 <span class="score-label text-[10px] md:text-xs font-black uppercase tracking-wider block drop-shadow-sm" id="p2-name">Pemain 2 (Hitam)</span>
                 <span class="score-number text-2xl md:text-4xl font-black drop-shadow-md block" id="p2-points">0</span>
@@ -122,9 +116,8 @@
     </div>
 
     <!-- Area Tengah: Kanvas Papan Karambol -->
-    <div id="canvas-container" class="relative w-full max-w-2xl flex-grow flex items-center justify-center min-h-0 z-0">
+    <div id="canvas-container" class="relative w-full max-w-2xl flex-grow flex items-center justify-center min-h-0 z-0 px-2 md:px-0">
         <canvas id="gameCanvas" class="object-contain"></canvas>
-        <canvas id="fxCanvas" class="absolute pointer-events-none"></canvas>
     </div>
 
     <!-- Bottom UI (Pesan Panduan & Tombol) -->
@@ -191,8 +184,6 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const fxCanvas = document.getElementById('fxCanvas');
-    const fxCtx = fxCanvas.getContext('2d');
     
     const topBar = document.getElementById('top-bar');
     const bottomBar = document.getElementById('bottom-bar');
@@ -220,13 +211,12 @@
     
     let isPlaying = false;
     let isPVE = true;
-    let turn = 1; // 1 = P1(Putih), 2 = P2/Bot(Hitam)
+    let turn = 1; 
     let scores = { 1: 0, 2: 0 };
     let piecesLeft = { 1: 9, 2: 9, 3: 1 };
     
-    // State Kontrol
     let isPlacingStriker = false;
-    let isDraggingToPlace = false; // State baru untuk drag & drop penempatan
+    let isDraggingToPlace = false; 
     let isAiming = false;
     let isMoving = false;
     let dragStart = { x: 0, y: 0 };
@@ -237,12 +227,10 @@
     let firstHitPiece = null; 
     let toastTimeout = null;
 
-    // State Animasi
     let placeAnim = { active: false, x: 0, y: 0, life: 0 };
-    let tutorialAnimTime = 0; // State untuk tangan penunjuk geser
-    let pullTutorialAnimTime = 0; // State BARU untuk tangan pencontoh tarikan bidikan
+    let tutorialAnimTime = 0; 
+    let pullTutorialAnimTime = 0; 
 
-    // Warna Ceria
     const colorWhitePiece = '#ffffff';
     const colorBlackPiece = '#312e81'; 
     const colorQueen = '#f43f5e'; 
@@ -254,9 +242,7 @@
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (AudioContext) audioCtx = new AudioContext();
-            } catch(e) {
-                console.warn("Audio tidak didukung", e);
-            }
+            } catch(e) { console.warn("Audio tidak didukung", e); }
         }
     }
     
@@ -316,8 +302,7 @@
         }
     }
 
-    function updateParticles() {
-        fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+    function drawEffects() {
         for(let i = particles.length - 1; i >= 0; i--) {
             let p = particles[i];
             p.x += p.vx; p.y += p.vy; 
@@ -326,66 +311,64 @@
             if(p.life <= 0) {
                 particles.splice(i, 1);
             } else {
-                fxCtx.globalAlpha = Math.max(0, p.life);
-                fxCtx.fillStyle = p.color;
-                fxCtx.beginPath(); fxCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); fxCtx.fill();
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
             }
         }
         
-        // Animasi Tangan Menyentil (Flick)
         if (flickAnim.active) {
             flickAnim.life -= 0.05; 
             if (flickAnim.life <= 0) { flickAnim.active = false; } else {
-                fxCtx.save();
+                ctx.save();
                 let progress = 1.0 - flickAnim.life;
                 
                 if(progress < 0.6) {
-                    fxCtx.beginPath();
-                    fxCtx.arc(flickAnim.startX, flickAnim.startY, progress * boardSize * 0.2, 0, Math.PI*2);
-                    fxCtx.strokeStyle = `rgba(255,255,255,${1 - progress/.6})`;
-                    fxCtx.lineWidth = boardSize * 0.01;
-                    fxCtx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(flickAnim.startX, flickAnim.startY, progress * boardSize * 0.2, 0, Math.PI*2);
+                    ctx.strokeStyle = `rgba(255,255,255,${1 - progress/.6})`;
+                    ctx.lineWidth = boardSize * 0.01;
+                    ctx.stroke();
                 }
 
-                fxCtx.globalAlpha = Math.max(0, flickAnim.life);
+                ctx.globalAlpha = Math.max(0, flickAnim.life);
                 const dist = progress * (boardSize * 0.15); 
                 const fx = flickAnim.startX + Math.cos(flickAnim.angle) * dist;
                 const fy = flickAnim.startY + Math.sin(flickAnim.angle) * dist;
                 
-                fxCtx.translate(fx, fy); fxCtx.rotate(flickAnim.angle + Math.PI/2);
-                fxCtx.font = `${boardSize * 0.12}px Arial`; 
-                fxCtx.textAlign = "center"; fxCtx.textBaseline = "middle";
-                fxCtx.fillText("👆", 0, boardSize * 0.04); 
-                fxCtx.restore();
+                ctx.translate(fx, fy); ctx.rotate(flickAnim.angle + Math.PI/2);
+                ctx.font = `${boardSize * 0.12}px Arial`; 
+                ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                ctx.fillText("👆", 0, boardSize * 0.04); 
+                ctx.restore();
             }
         }
 
-        // Animasi Tangan Meletakkan Koin
         if (placeAnim.active) {
             placeAnim.life -= 0.02; 
             if (placeAnim.life <= 0) { placeAnim.active = false; } else {
-                fxCtx.save();
-                fxCtx.globalAlpha = Math.min(1, placeAnim.life * 2); 
+                ctx.save();
+                ctx.globalAlpha = Math.min(1, placeAnim.life * 2); 
                 let progress = 1.0 - placeAnim.life;
-                
                 let dropOffset = Math.max(0, (0.3 - progress) * 150); 
                 
-                fxCtx.translate(placeAnim.x, placeAnim.y - dropOffset);
-                fxCtx.font = `${boardSize * 0.12}px Arial`; 
-                fxCtx.textAlign = "center"; fxCtx.textBaseline = "bottom";
-                fxCtx.fillText("👇", 0, 0); 
+                ctx.translate(placeAnim.x, placeAnim.y - dropOffset);
+                ctx.font = `${boardSize * 0.12}px Arial`; 
+                ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+                ctx.fillText("👇", 0, 0); 
                 
-                fxCtx.beginPath();
-                fxCtx.arc(0, boardSize * 0.02, boardSize * 0.05, 0, Math.PI*2);
-                fxCtx.strokeStyle = `rgba(255, 255, 255, ${placeAnim.life})`;
-                fxCtx.lineWidth = 4;
-                fxCtx.stroke();
+                ctx.beginPath();
+                ctx.arc(0, boardSize * 0.02, boardSize * 0.05, 0, Math.PI*2);
+                ctx.strokeStyle = `rgba(255, 255, 255, ${placeAnim.life})`;
+                ctx.lineWidth = 4;
+                ctx.stroke();
                 
-                fxCtx.restore();
+                ctx.restore();
             }
         }
 
-        // Animasi Tutorial Menunjuk & Menggeser di Awal Turn
         if (isPlacingStriker && !isDraggingToPlace && !(turn === 2 && isPVE)) {
             tutorialAnimTime += 0.05;
             let baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
@@ -393,74 +376,54 @@
             let handY = turn === 1 ? baselineY + boardSize * 0.08 : baselineY - boardSize * 0.08;
             let emoji = turn === 1 ? "👆" : "👇";
 
-            fxCtx.save();
-            fxCtx.font = `${boardSize * 0.08}px Arial`;
-            fxCtx.textAlign = "center"; fxCtx.textBaseline = "middle";
-            fxCtx.globalAlpha = 0.6 + Math.sin(tutorialAnimTime * 2) * 0.2; 
-            fxCtx.fillText(emoji, handX, handY);
+            ctx.save();
+            ctx.font = `${boardSize * 0.08}px Arial`;
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.globalAlpha = 0.6 + Math.sin(tutorialAnimTime * 2) * 0.2; 
+            ctx.fillText(emoji, handX, handY);
 
-            // Garis putus-putus jejak geseran
-            fxCtx.beginPath();
-            fxCtx.moveTo(boardSize * 0.3, handY);
-            fxCtx.lineTo(boardSize * 0.7, handY);
-            fxCtx.strokeStyle = `rgba(255,255,255,0.3)`;
-            fxCtx.lineWidth = 2;
-            fxCtx.setLineDash([5, 5]);
-            fxCtx.stroke();
-            fxCtx.restore();
+            ctx.beginPath();
+            ctx.moveTo(boardSize * 0.3, handY);
+            ctx.lineTo(boardSize * 0.7, handY);
+            ctx.strokeStyle = `rgba(255,255,255,0.3)`;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.restore();
         }
 
-        // Animasi Tutorial Menarik (Drag) Striker Setelah Diletakkan
         if (!isPlacingStriker && !isAiming && !isMoving && !(turn === 2 && isPVE) && striker.active) {
             pullTutorialAnimTime += 0.03;
-            
-            // Siklus animasi berulang: 0.0 ke 1.0
             let cycle = pullTutorialAnimTime % 1.5; 
-            
-            // Hanya jalankan animasi saat siklus 0 - 1, sisanya jeda
             if (cycle < 1.0) {
-                // Jari bergerak mundur dari striker
                 let pullDistance = cycle * (boardSize * 0.15); 
-                
-                // Jika P1, tarik ke bawah. Jika P2, tarik ke atas.
                 let pullDir = turn === 1 ? 1 : -1; 
-                
                 let handX = striker.x;
                 let handY = striker.y + (pullDistance * pullDir);
 
-                fxCtx.save();
-                fxCtx.font = `${boardSize * 0.08}px Arial`;
-                fxCtx.textAlign = "center"; fxCtx.textBaseline = "middle";
-                
-                // Fade in saat menyentuh striker, fade out saat ditarik maksimal
+                ctx.save();
+                ctx.font = `${boardSize * 0.08}px Arial`;
+                ctx.textAlign = "center"; ctx.textBaseline = "middle";
                 let alpha = cycle < 0.2 ? cycle / 0.2 : (1.0 - cycle) / 0.8;
-                fxCtx.globalAlpha = Math.max(0, alpha) * 0.8; 
+                ctx.globalAlpha = Math.max(0, alpha) * 0.8; 
                 
-                fxCtx.fillText("👆", handX, handY + (boardSize * 0.02 * pullDir));
+                ctx.fillText("👆", handX, handY + (boardSize * 0.02 * pullDir));
 
-                // Gambar garis kekeran contoh (berlawanan arah tarikan)
                 if (pullDistance > 5) {
-                    fxCtx.beginPath(); 
-                    fxCtx.moveTo(striker.x, striker.y);
-                    
+                    ctx.beginPath(); 
+                    ctx.moveTo(striker.x, striker.y);
                     let visualDist = pullDistance * 1.5; 
                     let endX = striker.x;
-                    let endY = striker.y - (visualDist * pullDir); // Menghadap ke tengah papan
+                    let endY = striker.y - (visualDist * pullDir); 
                     
-                    fxCtx.lineTo(endX, endY);
-                    
+                    ctx.lineTo(endX, endY);
                     let pR = Math.min(pullDistance / 100, 1);
-                    fxCtx.strokeStyle = `rgba(255, ${Math.floor(255 - pR*255)}, ${Math.floor(255 - pR*100)}, ${alpha})`; 
-                    fxCtx.lineWidth = 4; 
-                    fxCtx.setLineDash([5, 5]); 
-                    fxCtx.stroke(); 
-                    fxCtx.setLineDash([]);
+                    ctx.strokeStyle = `rgba(255, ${Math.floor(255 - pR*255)}, ${Math.floor(255 - pR*100)}, ${alpha})`; 
+                    ctx.lineWidth = 4; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
                 }
-                fxCtx.restore();
+                ctx.restore();
             }
         }
-        
-        fxCtx.globalAlpha = 1.0;
     }
 
     function resize() {
@@ -473,11 +436,7 @@
         boardSize = Math.floor(size);
         
         canvas.width = boardSize; canvas.height = boardSize;
-        fxCanvas.width = boardSize; fxCanvas.height = boardSize;
-
         canvas.style.width = `${boardSize}px`; canvas.style.height = `${boardSize}px`;
-        fxCanvas.style.width = `${boardSize}px`; fxCanvas.style.height = `${boardSize}px`;
-        fxCanvas.style.top = `${(ch - boardSize) / 2}px`; fxCanvas.style.left = `${(cw - boardSize) / 2}px`;
 
         setupPockets();
     }
@@ -528,13 +487,12 @@
         firstHitPiece = null; 
         isDraggingToPlace = false;
         tutorialAnimTime = 0;
-        pullTutorialAnimTime = 0; // Reset waktu tutorial tarikan
+        pullTutorialAnimTime = 0; 
         
         const baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
         striker.y = baselineY; 
         striker.x = boardSize / 2;
         
-        // Pastikan posisi awal tidak menabrak koin lain
         let attempts = 0;
         while (!isPlacementValid(striker.x, striker.y) && attempts < 50) {
             striker.x = boardSize * 0.2 + Math.random() * (boardSize * 0.6);
@@ -543,15 +501,11 @@
         
         isPlacingStriker = true;
         
-        // Update UI Box Styling Ceria
         const p1Box = document.getElementById('p1-box');
         const p2Box = document.getElementById('p2-box');
         
-        if (turn === 1) {
-            p1Box.classList.add('active-turn'); p2Box.classList.remove('active-turn');
-        } else {
-            p2Box.classList.add('active-turn'); p1Box.classList.remove('active-turn');
-        }
+        if (turn === 1) { p1Box.classList.add('active-turn'); p2Box.classList.remove('active-turn'); } 
+        else { p2Box.classList.add('active-turn'); p1Box.classList.remove('active-turn'); }
         
         strikerMessage.classList.remove('hidden');
         if (pendingQueenCover) {
@@ -634,7 +588,7 @@
             isDraggingToPlace = false;
             isPlacingStriker = false;
             strikerMessage.innerText = "2. Tarik ke belakang, bidik & lepaskan!";
-            strikerMessage.style.background = "linear-gradient(to right, #10b981, #059669)"; // Hijau ceria
+            strikerMessage.style.background = "linear-gradient(to right, #10b981, #059669)"; 
             return;
         }
 
@@ -662,7 +616,6 @@
     window.addEventListener('mouseup', handleEnd);
     canvas.addEventListener('touchstart', (e) => { if(e.target === canvas) e.preventDefault(); handleStart(e); }, {passive: false});
     window.addEventListener('touchmove', (e) => { 
-        // Cegah scroll saat sedang placing atau aiming
         if (isPlaying && (isAiming || isDraggingToPlace)) { e.preventDefault(); } 
         handleMove(e); 
     }, {passive: false});
@@ -760,7 +713,6 @@
                 p.x = cx + Math.cos(angle) * radius; p.y = cy + Math.sin(angle) * radius; attempts++;
             }
             
-            // Trigger animasi jari meletakkan koin
             placeAnim = { active: true, x: p.x, y: p.y, life: 1.0 };
         }
     }
@@ -912,7 +864,15 @@
     }
 
     function draw() {
-        ctx.fillStyle = '#fbbf24'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Membersihkan canvas dan menggambar background kayu (border ikut ter-draw di dalam agar presisi)
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#fcd34d'; // Warna border frame luar
+        ctx.beginPath(); ctx.roundRect(0, 0, canvas.width, canvas.height, 20); ctx.fill();
+
+        ctx.fillStyle = '#f59e0b'; // Warna kayu tengah
+        let innerMargin = 4;
+        ctx.beginPath(); ctx.roundRect(innerMargin, innerMargin, canvas.width - innerMargin*2, canvas.height - innerMargin*2, 16); ctx.fill();
         
         let wallT = boardSize * 0.05; ctx.strokeStyle = '#b45309'; ctx.lineWidth = wallT;
         ctx.strokeRect(wallT/2, wallT/2, canvas.width - wallT, canvas.height - wallT);
@@ -965,11 +925,14 @@
                 }
             }
         }
+        
+        // Panggil drawEffects di dalam loop draw() utama agar digambar di canvas yang sama
+        drawEffects();
     }
 
     function gameLoop() {
-        if (isPlaying) { updatePhysics(); draw(); updateParticles(); }
-        else if (gameOverOverlay.classList.contains('hidden') === false) { updateParticles(); } 
+        if (isPlaying) { updatePhysics(); draw(); }
+        else if (gameOverOverlay.classList.contains('hidden') === false) { draw(); } 
         requestAnimationFrame(gameLoop);
     }
 
