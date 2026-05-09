@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Karambol Nusantara</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-    
     <style>
         body {
             touch-action: none;
@@ -101,14 +99,22 @@
 </head>
 <body class="text-white font-sans flex flex-col items-center justify-between h-screen w-screen relative select-none">
 
-    <button id="btn-mute" class="absolute top-4 right-4 bg-white/20 hover:bg-white/40 p-3 rounded-full backdrop-blur-md z-[60] transition-all text-xl shadow-lg border-2 border-white/50">
+    <!-- Tombol Audio (Pojok Kanan Atas) -->
+    <button id="btn-mute" class="absolute top-4 right-4 bg-white/20 hover:bg-white/40 p-3 rounded-full backdrop-blur-md z-[60] transition-all text-xl shadow-lg border-2 border-white/50 w-12 h-12 flex items-center justify-center">
         🔊
     </button>
 
+    <!-- Tombol Berhenti (Pojok Kiri Atas, setema dengan audio) -->
+    <button id="btn-stop" class="absolute top-4 left-4 bg-white/20 hover:bg-red-500/80 p-3 rounded-full backdrop-blur-md z-[60] transition-all text-xl shadow-lg border-2 border-white/50 w-12 h-12 flex items-center justify-center hidden">
+        ✖️
+    </button>
+
+    <!-- Notifikasi Pop-up -->
     <div id="toast-message" class="absolute top-6 left-1/2 transform -translate-x-1/2 text-white px-8 py-3 rounded-full font-extrabold text-sm md:text-base shadow-2xl border-4 border-white/50 opacity-0 transition-all duration-300 scale-90 whitespace-nowrap z-50">
         Pesan Info
     </div>
 
+    <!-- Top UI (Skor) -->
     <div id="top-bar" class="w-full max-w-2xl flex flex-col items-center justify-start p-2 md:p-4 h-[80px] md:h-[100px] shrink-0 opacity-0 pointer-events-none transition-opacity duration-300 z-10 pt-4 md:pt-6">
         <div class="flex justify-between w-full px-2">
             <div class="score-box p-2 px-3 md:px-5 rounded-2xl backdrop-blur-md" id="p1-box">
@@ -123,22 +129,21 @@
         </div>
     </div>
 
+    <!-- Area Tengah: Kanvas Papan Karambol -->
     <div id="canvas-container" class="relative w-full max-w-2xl flex-grow flex items-center justify-center min-h-0 z-0">
         <canvas id="gameCanvas" class="object-contain"></canvas>
         <canvas id="fxCanvas" class="absolute pointer-events-none"></canvas>
     </div>
 
+    <!-- Bottom UI (Pesan Panduan) -->
     <div id="bottom-bar" class="w-full max-w-2xl flex flex-col items-center justify-start p-2 md:p-4 h-[80px] md:h-[100px] shrink-0 relative opacity-0 pointer-events-none transition-opacity duration-300 z-10">
         <div id="striker-message" class="bg-gradient-to-r from-blue-500 to-indigo-500 px-4 md:px-8 py-2 md:py-3 rounded-full text-sm md:text-base font-bold shadow-xl text-center border-2 border-white transition-colors duration-300">
             Tempatkan Striker di Garis Anda
         </div>
-        
-        <button id="btn-stop" class="absolute bottom-4 md:bottom-6 right-2 md:right-4 bg-red-500 hover:bg-red-400 text-white px-3 md:px-4 py-2 rounded-xl font-black text-[10px] md:text-xs uppercase border-b-4 border-red-700 active:border-b-0 active:translate-y-1 transition-all pointer-events-auto shadow-lg">
-            Berhenti
-        </button>
     </div>
 
-    <div id="menu-overlay" class="overlay">
+    <!-- Menu Utama -->
+    <div id="menu-overlay" class="overlay z-[70]">
         <div class="fun-card p-6 md:p-8 rounded-3xl flex flex-col items-center max-w-md w-[90%] max-h-[90vh] overflow-y-auto">
             <h1 class="text-5xl md:text-6xl font-black text-white mb-2 drop-shadow-xl text-center leading-tight tracking-tight" style="text-shadow: 3px 3px 0 #db2777, -1px -1px 0 #db2777, 1px -1px 0 #db2777, -1px 1px 0 #db2777, 1px 1px 0 #db2777;">
                 KARAMBOL<br><span class="text-yellow-300">SERU!</span>
@@ -153,7 +158,8 @@
         </div>
     </div>
 
-    <div id="howto-overlay" class="overlay hidden">
+    <!-- Layar Cara Bermain -->
+    <div id="howto-overlay" class="overlay hidden z-[70]">
         <div class="fun-card p-6 md:p-8 rounded-3xl flex flex-col items-center max-w-md w-[90%] max-h-[90vh] overflow-y-auto">
             <h2 class="text-3xl md:text-4xl font-black text-yellow-300 mb-4 drop-shadow-md text-center" style="text-shadow: 2px 2px 0 #b45309;">Cara Bermain</h2>
             <div class="text-xs md:text-sm text-white/90 bg-black/20 p-4 rounded-2xl w-full mb-6 space-y-3">
@@ -169,7 +175,8 @@
         </div>
     </div>
 
-    <div id="game-over-overlay" class="overlay hidden">
+    <!-- Layar Game Over -->
+    <div id="game-over-overlay" class="overlay hidden z-[70]">
         <div class="fun-card p-6 md:p-8 rounded-3xl flex flex-col items-center max-w-md w-[90%] max-h-[90vh] overflow-y-auto text-center">
             <div class="text-6xl mb-4">🏆</div>
             <h2 class="text-4xl md:text-5xl font-black text-yellow-300 mb-6 drop-shadow-lg" id="winner-text" style="text-shadow: 2px 2px 0 #b45309;">Hore! P1 Menang!</h2>
@@ -195,7 +202,6 @@
     const bottomBar = document.getElementById('bottom-bar');
     const menuOverlay = document.getElementById('menu-overlay');
     const gameOverOverlay = document.getElementById('game-over-overlay');
-    const btnMute = document.getElementById('btn-mute');
     
     const btnPvE = document.getElementById('btn-pve');
     const btnPvP = document.getElementById('btn-pvp');
@@ -204,6 +210,7 @@
     const btnStop = document.getElementById('btn-stop');
     const btnHowto = document.getElementById('btn-howto');
     const btnHowtoBack = document.getElementById('btn-howto-back');
+    const btnMute = document.getElementById('btn-mute');
     const howtoOverlay = document.getElementById('howto-overlay');
     
     const strikerMessage = document.getElementById('striker-message');
@@ -218,7 +225,7 @@
     
     let isPlaying = false;
     let isPVE = true;
-    let turn = 1; 
+    let turn = 1; // 1 = P1(Putih), 2 = P2/Bot(Hitam)
     let scores = { 1: 0, 2: 0 };
     let piecesLeft = { 1: 9, 2: 9, 3: 1 };
     
@@ -230,10 +237,6 @@
     let dragStart = { x: 0, y: 0 };
     let dragCurrent = { x: 0, y: 0 };
 
-    // Audio SFX Trackers
-    let lastDragPlaceX = 0;
-    let lastAimDist = 0;
-
     let pendingQueenCover = false;
     let pocketedThisStrike = [];
     let firstHitPiece = null; 
@@ -242,109 +245,93 @@
     // State Animasi
     let placeAnim = { active: false, x: 0, y: 0, life: 0 };
     let tutorialAnimTime = 0; 
+    let particles = [];
+    let flickAnim = { active: false, startX: 0, startY: 0, angle: 0, life: 0 };
 
+    // Warna Ceria
     const colorWhitePiece = '#ffffff';
     const colorBlackPiece = '#312e81'; 
     const colorQueen = '#f43f5e'; 
     const confettiColors = ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6'];
 
-    const audioManager = {
+    // --- SISTEM AUDIO (TONE.JS) ---
+    const audioEngine = {
         initialized: false,
         isMuted: false,
-        bgmVolume: -18,
+        bgmVolume: -16,
         sfxVolume: -5,
+        lastClackTime: 0,
+        lastRatchetTime: 0, // Tambahkan tracker waktu untuk suara ratchet
         synths: {},
-        lastClackTime: 0, // Tambahkan tracker waktu ini
-
+        
         async init() {
             if (this.initialized) return;
             await Tone.start();
+            this.initialized = true;
 
-            // Set global volume node
-            Tone.Destination.volume.value = 0;
+            Tone.Transport.bpm.value = 110;
 
-            // -- BGM Setup (Ska/Reggae Upbeat Fun) --
-            this.synths.bgmChord = new Tone.PolySynth(Tone.Synth, {
-                oscillator: { type: "triangle" },
-                envelope: { attack: 0.05, decay: 0.1, sustain: 0.2, release: 0.5 }
+            // -- BGM Setup (Ceria Ska/Reggae style) --
+            this.synths.bass = new Tone.Synth({
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.05, decay: 0.2, sustain: 0.2, release: 1 }
             }).toDestination();
-            this.synths.bgmChord.volume.value = this.bgmVolume;
+            this.synths.bass.volume.value = this.bgmVolume;
 
-            this.synths.bgmBass = new Tone.MonoSynth({
-                oscillator: { type: "sine" },
-                envelope: { attack: 0.05, decay: 0.2, sustain: 0.4, release: 0.5 }
+            this.synths.chord = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'pwm', modulationFrequency: 0.2 },
+                envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.5 }
             }).toDestination();
-            this.synths.bgmBass.volume.value = this.bgmVolume + 4;
+            this.synths.chord.volume.value = this.bgmVolume - 5;
 
-            // Chord Progression: C - F - G - C
-            const chords = [
-                ["C4", "E4", "G4"], ["F3", "A3", "C4"], 
-                ["G3", "B3", "D4"], ["C4", "E4", "G4"]
-            ];
-            const bassNotes = ["C3", "F2", "G2", "C3"];
-
-            let step = 0;
-            Tone.Transport.scheduleRepeat((time) => {
-                let beatInMeasure = step % 16;
-                let chordIndex = Math.floor(step / 16) % 4;
-
-                // Bass on Downbeats
-                if (beatInMeasure === 0 || beatInMeasure === 8) {
-                    this.synths.bgmBass.triggerAttackRelease(bassNotes[chordIndex], "8n", time);
-                }
-                // Chords on Upbeats (Ska style)
-                if (beatInMeasure === 2 || beatInMeasure === 6 || beatInMeasure === 10 || beatInMeasure === 14) {
-                    this.synths.bgmChord.triggerAttackRelease(chords[chordIndex], "16n", time);
-                }
-                step++;
-            }, "16n");
-
-            Tone.Transport.bpm.value = 105;
+            const bassLine = ["C2", null, "G1", null, "C2", null, "F1", "G1"];
+            const chords = [null, ["C4", "E4", "G4"], null, ["C4", "E4", "G4"], null, ["F4", "A4", "C5"], null, ["G4", "B4", "D5"]];
+            
+            this.bgmLoop = new Tone.Loop(time => {
+                let step = Math.floor(Tone.Transport.position.split(':')[1] * 2 + Tone.Transport.position.split(':')[2] / 2) % 8;
+                if (bassLine[step]) this.synths.bass.triggerAttackRelease(bassLine[step], "8n", time);
+                if (chords[step]) this.synths.chord.triggerAttackRelease(chords[step], "16n", time);
+            }, "8n");
+            
+            this.bgmLoop.start(0);
             Tone.Transport.start();
 
             // -- SFX Setup --
-            // Suara Geser Striker
+            // Sliding (Halus, brown noise)
             this.synths.slide = new Tone.NoiseSynth({
-                noise: { type: 'pink' }, envelope: { attack: 0.01, decay: 0.05, sustain: 0, release: 0.01 }
+                noise: { type: 'brown' }, envelope: { attack: 0.05, decay: 0.1, sustain: 0, release: 0.1 }
             }).toDestination();
-            this.synths.slide.volume.value = this.sfxVolume - 12;
+            this.synths.slide.volume.value = this.sfxVolume - 22; // Sangat pelan
 
-            // Suara Drop/Letakkan
+            // Drop/Letak
             this.synths.drop = new Tone.MembraneSynth({
                 pitchDecay: 0.05, octaves: 3, envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.1 }
             }).toDestination();
             this.synths.drop.volume.value = this.sfxVolume;
 
-            // Suara Tarik Kekeran (Ratchet/Pegas)
+            // Tarik Kekeran (Ratchet)
             this.synths.ratchet = new Tone.Synth({
                 oscillator: { type: 'square' }, envelope: { attack: 0.005, decay: 0.02, sustain: 0, release: 0.01 }
             }).toDestination();
             this.synths.ratchet.volume.value = this.sfxVolume - 15;
 
-            // Suara Tembak (Thud)
+            // Tembak
             this.synths.shoot = new Tone.MembraneSynth({
                 pitchDecay: 0.1, octaves: 2
             }).toDestination();
             this.synths.shoot.volume.value = this.sfxVolume;
 
-            // Suara Benturan Koin (Clack)
-            this.synths.clack = new Tone.PluckSynth({
-                attackNoise: 1, dampening: 2000, resonance: 0.8
+            // Benturan Koin (Keras & Punchy)
+            this.synths.clack = new Tone.MembraneSynth({
+                pitchDecay: 0.01, octaves: 4, 
+                envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.05 }
             }).toDestination();
 
-            // Suara Masuk Lubang (Ting!)
-            this.synths.pocket = new Tone.PolySynth(Tone.Synth, {
-                envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.8 }
+            // Masuk Lubang
+            this.synths.pocket = new Tone.Synth({
+                oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.5 }
             }).toDestination();
-            this.synths.pocket.volume.value = this.sfxVolume - 5;
-
-            // Suara Pelanggaran (Tet-tot)
-            this.synths.foul = new Tone.PolySynth(Tone.Synth, {
-                oscillator: { type: "sawtooth" }
-            }).toDestination();
-            this.synths.foul.volume.value = this.sfxVolume - 5;
-
-            this.initialized = true;
+            this.synths.pocket.volume.value = this.sfxVolume + 5;
         },
 
         toggleMute() {
@@ -353,47 +340,39 @@
             return this.isMuted;
         },
 
-        playSlide() { if(this.initialized) this.synths.slide.triggerAttackRelease("32n"); },
+        playSlide() { if(this.initialized) this.synths.slide.triggerAttackRelease("16n"); },
         playDrop() { if(this.initialized) this.synths.drop.triggerAttackRelease("G3", "16n"); },
         playRatchet(dist) {
             if(this.initialized) {
-                // Nada semakin tinggi saat ditarik semakin jauh
-                let freq = 300 + (dist * 2.5);
-                this.synths.ratchet.triggerAttackRelease(freq, "64n");
+                let now = Tone.now();
+                // Rate-Limiter: Cegah crash audio dengan membatasi pemutaran ratchet (misal tiap 50ms)
+                if (now - this.lastRatchetTime > 0.05) {
+                    let freq = 300 + (dist * 2.5);
+                    this.synths.ratchet.triggerAttackRelease(freq, "64n", now);
+                    this.lastRatchetTime = now;
+                }
             }
         },
-        playShoot(force) {
-            if(this.initialized) {
-                this.synths.shoot.triggerAttackRelease("C2", "8n");
-            }
-        },
+        playShoot(force) { if(this.initialized) this.synths.shoot.triggerAttackRelease("C2", "8n"); },
         playClack(force) {
             if(this.initialized && force > 1) {
                 let now = Tone.now();
-                // Cegah crash dengan Rate-limiting: Beri jeda minimal 20ms antar bunyi benturan
+                // Rate-Limiter: Cegah crash audio jika tabrakan masif terjadi dlm waktu < 20ms
                 if (now - this.lastClackTime > 0.02) {
-                    this.synths.clack.volume.value = Math.max(-25, -35 + force);
-                    this.synths.clack.triggerAttack("E5", now);
+                    this.synths.clack.volume.value = Math.max(-10, -20 + (force * 0.8));
+                    this.synths.clack.triggerAttackRelease("C4", "32n", now);
                     this.lastClackTime = now;
                 }
             }
         },
         playPocket() {
             if(this.initialized) {
-                this.synths.pocket.triggerAttackRelease(["C5", "E5", "G5"], "8n");
-            }
-        },
-        playFoul() {
-            if(this.initialized) {
-                this.synths.foul.triggerAttackRelease(["C3", "Eb3"], "8n");
+                let now = Tone.now();
+                this.synths.pocket.triggerAttackRelease("C6", "16n", now);
+                this.synths.pocket.triggerAttackRelease("E6", "8n", now + 0.1);
             }
         }
     };
-
-    btnMute.addEventListener('click', (e) => {
-        const isMuted = audioManager.toggleMute();
-        e.target.innerText = isMuted ? '🔇' : '🔊';
-    });
 
     function showToast(text, gradientStr = "linear-gradient(to right, #3b82f6, #8b5cf6)") {
         toastEl.innerText = text;
@@ -407,9 +386,6 @@
             toastEl.classList.add('opacity-0', 'scale-90', '-translate-y-4');
         }, 3000);
     }
-
-    let particles = [];
-    let flickAnim = { active: false, startX: 0, startY: 0, angle: 0, life: 0 };
 
     function createParticles(x, y) {
         for(let i=0; i<30; i++) {
@@ -438,6 +414,7 @@
             }
         }
         
+        // Animasi Tangan Menyentil (Flick)
         if (flickAnim.active) {
             flickAnim.life -= 0.05; 
             if (flickAnim.life <= 0) { flickAnim.active = false; } else {
@@ -465,12 +442,14 @@
             }
         }
 
+        // Animasi Tangan Meletakkan Koin (Hukuman)
         if (placeAnim.active) {
             placeAnim.life -= 0.02; 
             if (placeAnim.life <= 0) { placeAnim.active = false; } else {
                 fxCtx.save();
                 fxCtx.globalAlpha = Math.min(1, placeAnim.life * 2); 
                 let progress = 1.0 - placeAnim.life;
+                
                 let dropOffset = Math.max(0, (0.3 - progress) * 150); 
                 
                 fxCtx.translate(placeAnim.x, placeAnim.y - dropOffset);
@@ -481,11 +460,14 @@
                 fxCtx.beginPath();
                 fxCtx.arc(0, boardSize * 0.02, boardSize * 0.05, 0, Math.PI*2);
                 fxCtx.strokeStyle = `rgba(255, 255, 255, ${placeAnim.life})`;
-                fxCtx.lineWidth = 4; fxCtx.stroke();
+                fxCtx.lineWidth = 4;
+                fxCtx.stroke();
+                
                 fxCtx.restore();
             }
         }
 
+        // Animasi Tutorial Penunjuk
         if (isPlacingStriker && !isDraggingToPlace && !(turn === 2 && isPVE)) {
             tutorialAnimTime += 0.05;
             let baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
@@ -503,7 +485,9 @@
             fxCtx.moveTo(boardSize * 0.3, handY);
             fxCtx.lineTo(boardSize * 0.7, handY);
             fxCtx.strokeStyle = `rgba(255,255,255,0.3)`;
-            fxCtx.lineWidth = 2; fxCtx.setLineDash([5, 5]); fxCtx.stroke();
+            fxCtx.lineWidth = 2;
+            fxCtx.setLineDash([5, 5]);
+            fxCtx.stroke();
             fxCtx.restore();
         }
         
@@ -550,6 +534,7 @@
 
         pieces.push({ x: cx, y: cy, radius: pr, vx: 0, vy: 0, mass: 1, type: 3, active: true, color: colorQueen });
         
+        // Ring Dalam (6)
         const angles = [0, 60, 120, 180, 240, 300];
         for (let i = 0; i < 6; i++) {
             let a = angles[i] * Math.PI / 180;
@@ -558,10 +543,12 @@
             pieces.push({ x: cx + Math.cos(a) * (pr * 2.1), y: cy + Math.sin(a) * (pr * 2.1), radius: pr, vx: 0, vy: 0, mass: 1, type: type, active: true, color: color });
         }
         
+        // Ring Luar (12) - POLA DIPERBAIKI (Selang seling konsisten agar masing2 dapat 9 koin total)
         for (let i = 0; i < 12; i++) {
             let a = (i * 30) * Math.PI / 180;
-            // Penyesuaian agar persis 6 putih dan 6 hitam
-            let type = (i % 2 === 0) ? 1 : 2; 
+            // Agar jumlah koin persis adil (9 putih, 9 hitam):
+            // Outer ring (12) harus diisi 6 tipe 1 dan 6 tipe 2 selang-seling genap
+            let type = i % 2 !== 0 ? 1 : 2; // Pembalikan dari pola inner
             let color = type === 1 ? colorWhitePiece : colorBlackPiece;
             let dist = i % 2 === 0 ? (pr * 4.2) : (pr * 3.6);
             pieces.push({ x: cx + Math.cos(a) * dist, y: cy + Math.sin(a) * dist, radius: pr, vx: 0, vy: 0, mass: 1, type: type, active: true, color: color });
@@ -579,7 +566,6 @@
         const baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
         striker.y = baselineY; 
         striker.x = boardSize / 2;
-        lastDragPlaceX = striker.x;
         
         let attempts = 0;
         while (!isPlacementValid(striker.x, striker.y) && attempts < 50) {
@@ -648,14 +634,12 @@
             let minX = boardSize * 0.2; let maxX = boardSize * 0.8;
             striker.x = Math.max(minX, Math.min(maxX, pos.x)); 
             if (!isPlacementValid(striker.x, striker.y)) { striker.x = oldX; }
-            lastDragPlaceX = striker.x;
             return;
         }
 
         if (!isPlacingStriker && !isAiming && !isMoving) {
             if (isPointInStriker(pos.x, pos.y)) {
                 isAiming = true; dragStart = pos; dragCurrent = pos;
-                lastAimDist = 0;
             }
         }
     }
@@ -665,27 +649,16 @@
         const pos = getMousePos(e);
         
         if (isPlacingStriker && isDraggingToPlace) {
+            audioEngine.playSlide();
             let oldX = striker.x; 
             let minX = boardSize * 0.2; let maxX = boardSize * 0.8;
             striker.x = Math.max(minX, Math.min(maxX, pos.x)); 
             if (!isPlacementValid(striker.x, striker.y)) { striker.x = oldX; }
-            
-            // SFX Geser Striker
-            if (Math.abs(striker.x - lastDragPlaceX) > 10) {
-                audioManager.playSlide();
-                lastDragPlaceX = striker.x;
-            }
-
         } else if (isAiming) {
             dragCurrent = pos;
-            
-            // SFX Tarik Kekeran (Ratchet)
             let dx = dragStart.x - dragCurrent.x; let dy = dragStart.y - dragCurrent.y;
             let dist = Math.sqrt(dx*dx + dy*dy);
-            if (Math.abs(dist - lastAimDist) > 12) {
-                audioManager.playRatchet(dist);
-                lastAimDist = dist;
-            }
+            if (dist > 10) audioEngine.playRatchet(dist);
         }
     }
 
@@ -695,7 +668,7 @@
         if (isPlacingStriker && isDraggingToPlace) {
             isDraggingToPlace = false;
             isPlacingStriker = false;
-            audioManager.playDrop(); // SFX Jatuh
+            audioEngine.playDrop();
             strikerMessage.innerText = "2. Tarik ke belakang, bidik & lepaskan!";
             strikerMessage.style.background = "linear-gradient(to right, #10b981, #059669)"; 
             return;
@@ -715,7 +688,7 @@
                 flickAnim = { active: true, startX: striker.x - launchDx * striker.radius, startY: striker.y - launchDy * striker.radius, angle: Math.atan2(launchDy, launchDx), life: 1.0 };
                 isMoving = true;
                 strikerMessage.classList.add('hidden');
-                audioManager.playShoot(force); // SFX Tembak Thud
+                audioEngine.playShoot(force);
             }
         }
     }
@@ -741,8 +714,8 @@
             while (!isPlacementValid(striker.x, striker.y) && attempts < 50) {
                 striker.x = boardSize * 0.2 + Math.random() * (boardSize * 0.6); attempts++;
             }
+            audioEngine.playDrop();
             isPlacingStriker = false;
-            audioManager.playDrop();
             
             let target = null; let minDist = Infinity;
             pieces.forEach(p => {
@@ -764,9 +737,8 @@
             striker.vx = (dx / dist) * force; striker.vy = (dy / dist) * force;
             flickAnim = { active: true, startX: striker.x - (dx/dist)*striker.radius, startY: striker.y - (dy/dist)*striker.radius, angle: Math.atan2(dy/dist, dx/dist), life: 1.0 };
             
-            isMoving = true; strikerMessage.classList.add('hidden'); 
-            audioManager.playShoot(force);
-        }, 1200);
+            isMoving = true; strikerMessage.classList.add('hidden'); audioEngine.playShoot(force);
+        }, 1500);
     }
 
     function resolveCollision(p1, p2) {
@@ -786,7 +758,7 @@
             p2.vx += p * p1.mass * nx; p2.vy += p * p1.mass * ny;
 
             let impactForce = Math.sqrt(kx*kx + ky*ky);
-            audioManager.playClack(impactForce); // SFX Benturan Koin
+            if(impactForce > 1) audioEngine.playClack(impactForce);
             return true;
         }
         return false;
@@ -823,7 +795,6 @@
                 radius += 0.5; angle += 0.5;
                 p.x = cx + Math.cos(angle) * radius; p.y = cy + Math.sin(angle) * radius; attempts++;
             }
-            
             placeAnim = { active: true, x: p.x, y: p.y, life: 1.0 };
         }
     }
@@ -831,6 +802,19 @@
     function switchTurn() {
         turn = turn === 1 ? 2 : 1;
         startTurn();
+    }
+
+    function checkWinCondition() {
+        if (piecesLeft[1] === 0 || piecesLeft[2] === 0) {
+            let winner;
+            if (scores[1] > scores[2]) winner = 1;
+            else if (scores[2] > scores[1]) winner = 2;
+            else winner = (piecesLeft[1] === 0) ? 1 : 2; 
+            
+            endGame(winner);
+            return true;
+        }
+        return false;
     }
 
     function resolveEndTurn() {
@@ -873,8 +857,8 @@
                 showToast(`🚨 Pelanggaran: ${foulReason}`, "linear-gradient(to right, #ef4444, #991b1b)");
             }
             
-            audioManager.playFoul(); // SFX Foul
-            updateUI(); setTimeout(switchTurn, 1000);
+            updateUI(); 
+            if(!checkWinCondition()) setTimeout(switchTurn, 1000);
         } else {
             let extraTurn = false;
 
@@ -901,13 +885,9 @@
 
             updateUI();
             
-            // Cek Menang Murni Hanya Jika Ratu Tidak Sedang Di-Cover
-            if (!pendingQueenCover) {
-                if (piecesLeft[1] === 0 || piecesLeft[2] === 0) {
-                    let winner = scores[1] > scores[2] ? 1 : (scores[2] > scores[1] ? 2 : (piecesLeft[1] === 0 ? 1 : 2));
-                    endGame(winner);
-                    return; // Mencegah game lanjut ke startTurn
-                }
+            // PENTING: Periksa kemenangan di paling akhir. Kalau game tamat, hentikan fungsi ini (return)
+            if (checkWinCondition()) {
+                return; 
             }
 
             if (extraTurn) { startTurn(); } else { switchTurn(); }
@@ -928,9 +908,7 @@
             p.vx *= friction; p.vy *= friction;
 
             if (checkPocket(p)) {
-                p.active = false; 
-                audioManager.playPocket(); // SFX Masuk Lubang
-                createParticles(p.x, p.y);
+                p.active = false; audioEngine.playPocket(); createParticles(p.x, p.y);
                 pocketedThisStrike.push(p); continue; 
             }
 
@@ -971,6 +949,7 @@
     function endGame(winner) {
         isPlaying = false; gameOverOverlay.classList.remove('hidden');
         topBar.classList.add('opacity-0', 'pointer-events-none'); bottomBar.classList.add('opacity-0', 'pointer-events-none');
+        btnStop.classList.add('hidden');
         document.getElementById('final-p1').innerText = scores[1]; document.getElementById('final-p2').innerText = scores[2];
         
         let winText = winner === 1 ? "Pemain 1 Menang!" : (isPVE ? "Robot Menang!" : "Pemain 2 Menang!");
@@ -1043,18 +1022,16 @@
         requestAnimationFrame(gameLoop);
     }
 
-    btnPvE.addEventListener('click', async () => { await audioManager.init(); isPVE = true; startGame(); });
-    btnPvP.addEventListener('click', async () => { await audioManager.init(); isPVE = false; startGame(); });
+    btnPvE.addEventListener('click', () => { isPVE = true; startGame(); });
+    btnPvP.addEventListener('click', () => { isPVE = false; startGame(); });
     btnRestart.addEventListener('click', startGame);
     
     btnHowto.addEventListener('click', () => {
-        menuOverlay.classList.add('hidden');
-        howtoOverlay.classList.remove('hidden');
+        menuOverlay.classList.add('hidden'); howtoOverlay.classList.remove('hidden');
     });
 
     btnHowtoBack.addEventListener('click', () => {
-        howtoOverlay.classList.add('hidden');
-        menuOverlay.classList.remove('hidden');
+        howtoOverlay.classList.add('hidden'); menuOverlay.classList.remove('hidden');
     });
     
     btnMenu.addEventListener('click', () => {
@@ -1063,18 +1040,27 @@
         isPlaying = false;
     });
 
+    btnMute.addEventListener('click', async () => {
+        await audioEngine.init();
+        let muted = audioEngine.toggleMute();
+        btnMute.innerText = muted ? "🔈" : "🔊";
+    });
+
     btnStop.addEventListener('click', () => {
         isPlaying = false; menuOverlay.classList.remove('hidden'); gameOverOverlay.classList.add('hidden');
         topBar.classList.add('opacity-0', 'pointer-events-none'); bottomBar.classList.add('opacity-0', 'pointer-events-none'); 
         toastEl.classList.remove('opacity-100', 'scale-100', 'translate-y-0');
         toastEl.classList.add('opacity-0', 'scale-90', '-translate-y-4');
+        btnStop.classList.add('hidden');
     });
 
-    function startGame() {
+    async function startGame() {
+        await audioEngine.init(); 
         resize(); setupGame(); isPlaying = true;
         menuOverlay.classList.add('hidden'); gameOverOverlay.classList.add('hidden'); 
         topBar.classList.remove('opacity-0', 'pointer-events-none'); 
         bottomBar.classList.remove('opacity-0', 'pointer-events-none');
+        btnStop.classList.remove('hidden');
         toastEl.classList.remove('opacity-100', 'scale-100', 'translate-y-0');
         toastEl.classList.add('opacity-0', 'scale-90', '-translate-y-4');
     }
