@@ -4,12 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Karambol Nusantara</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
     <style>
         body {
             touch-action: none;
             overflow: hidden;
-            /* Latar belakang gradien ceria dan cerah */
             background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
             background-size: 200% 200%;
             animation: gradientBG 15s ease infinite;
@@ -24,11 +26,14 @@
         #gameCanvas {
             display: block;
             touch-action: none;
-            /* Background transparan karena kita menggambar background kayunya di dalam canvas agar 1 layer */
-            background-color: transparent; 
+            background-color: #f59e0b; 
             border-radius: 20px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(180, 83, 9, 0.5);
-            /* Border asli dipindah ke dalam canvas draw() agar presisi 100% */
+            border: 4px solid #fcd34d;
+        }
+        
+        #fxCanvas {
+            background-color: transparent; 
         }
 
         .overlay {
@@ -96,11 +101,14 @@
 </head>
 <body class="text-white font-sans flex flex-col items-center justify-between h-screen w-screen relative select-none">
 
-    <div id="toast-message" class="absolute top-4 left-1/2 transform -translate-x-1/2 text-white px-8 py-3 rounded-full font-extrabold text-sm md:text-base shadow-2xl border-4 border-white/50 opacity-0 transition-all duration-300 scale-90 whitespace-nowrap z-50">
+    <button id="btn-mute" class="absolute top-4 right-4 bg-white/20 hover:bg-white/40 p-3 rounded-full backdrop-blur-md z-[60] transition-all text-xl shadow-lg border-2 border-white/50">
+        🔊
+    </button>
+
+    <div id="toast-message" class="absolute top-6 left-1/2 transform -translate-x-1/2 text-white px-8 py-3 rounded-full font-extrabold text-sm md:text-base shadow-2xl border-4 border-white/50 opacity-0 transition-all duration-300 scale-90 whitespace-nowrap z-50">
         Pesan Info
     </div>
 
-    <!-- Top UI (Skor) -->
     <div id="top-bar" class="w-full max-w-2xl flex flex-col items-center justify-start p-2 md:p-4 h-[80px] md:h-[100px] shrink-0 opacity-0 pointer-events-none transition-opacity duration-300 z-10 pt-4 md:pt-6">
         <div class="flex justify-between w-full px-2">
             <div class="score-box p-2 px-3 md:px-5 rounded-2xl backdrop-blur-md" id="p1-box">
@@ -115,12 +123,11 @@
         </div>
     </div>
 
-    <!-- Area Tengah: Kanvas Papan Karambol -->
-    <div id="canvas-container" class="relative w-full max-w-2xl flex-grow flex items-center justify-center min-h-0 z-0 px-2 md:px-0">
+    <div id="canvas-container" class="relative w-full max-w-2xl flex-grow flex items-center justify-center min-h-0 z-0">
         <canvas id="gameCanvas" class="object-contain"></canvas>
+        <canvas id="fxCanvas" class="absolute pointer-events-none"></canvas>
     </div>
 
-    <!-- Bottom UI (Pesan Panduan & Tombol) -->
     <div id="bottom-bar" class="w-full max-w-2xl flex flex-col items-center justify-start p-2 md:p-4 h-[80px] md:h-[100px] shrink-0 relative opacity-0 pointer-events-none transition-opacity duration-300 z-10">
         <div id="striker-message" class="bg-gradient-to-r from-blue-500 to-indigo-500 px-4 md:px-8 py-2 md:py-3 rounded-full text-sm md:text-base font-bold shadow-xl text-center border-2 border-white transition-colors duration-300">
             Tempatkan Striker di Garis Anda
@@ -131,7 +138,6 @@
         </button>
     </div>
 
-    <!-- Menu Utama -->
     <div id="menu-overlay" class="overlay">
         <div class="fun-card p-6 md:p-8 rounded-3xl flex flex-col items-center max-w-md w-[90%] max-h-[90vh] overflow-y-auto">
             <h1 class="text-5xl md:text-6xl font-black text-white mb-2 drop-shadow-xl text-center leading-tight tracking-tight" style="text-shadow: 3px 3px 0 #db2777, -1px -1px 0 #db2777, 1px -1px 0 #db2777, -1px 1px 0 #db2777, 1px 1px 0 #db2777;">
@@ -147,7 +153,6 @@
         </div>
     </div>
 
-    <!-- Layar Cara Bermain -->
     <div id="howto-overlay" class="overlay hidden">
         <div class="fun-card p-6 md:p-8 rounded-3xl flex flex-col items-center max-w-md w-[90%] max-h-[90vh] overflow-y-auto">
             <h2 class="text-3xl md:text-4xl font-black text-yellow-300 mb-4 drop-shadow-md text-center" style="text-shadow: 2px 2px 0 #b45309;">Cara Bermain</h2>
@@ -164,7 +169,6 @@
         </div>
     </div>
 
-    <!-- Layar Game Over -->
     <div id="game-over-overlay" class="overlay hidden">
         <div class="fun-card p-6 md:p-8 rounded-3xl flex flex-col items-center max-w-md w-[90%] max-h-[90vh] overflow-y-auto text-center">
             <div class="text-6xl mb-4">🏆</div>
@@ -184,11 +188,14 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    const fxCanvas = document.getElementById('fxCanvas');
+    const fxCtx = fxCanvas.getContext('2d');
     
     const topBar = document.getElementById('top-bar');
     const bottomBar = document.getElementById('bottom-bar');
     const menuOverlay = document.getElementById('menu-overlay');
     const gameOverOverlay = document.getElementById('game-over-overlay');
+    const btnMute = document.getElementById('btn-mute');
     
     const btnPvE = document.getElementById('btn-pve');
     const btnPvP = document.getElementById('btn-pvp');
@@ -215,6 +222,7 @@
     let scores = { 1: 0, 2: 0 };
     let piecesLeft = { 1: 9, 2: 9, 3: 1 };
     
+    // State Kontrol
     let isPlacingStriker = false;
     let isDraggingToPlace = false; 
     let isAiming = false;
@@ -222,57 +230,170 @@
     let dragStart = { x: 0, y: 0 };
     let dragCurrent = { x: 0, y: 0 };
 
+    // Audio SFX Trackers
+    let lastDragPlaceX = 0;
+    let lastAimDist = 0;
+
     let pendingQueenCover = false;
     let pocketedThisStrike = [];
     let firstHitPiece = null; 
     let toastTimeout = null;
 
+    // State Animasi
     let placeAnim = { active: false, x: 0, y: 0, life: 0 };
     let tutorialAnimTime = 0; 
-    let pullTutorialAnimTime = 0; 
 
     const colorWhitePiece = '#ffffff';
     const colorBlackPiece = '#312e81'; 
     const colorQueen = '#f43f5e'; 
     const confettiColors = ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6'];
 
-    let audioCtx = null;
-    function initAudio() {
-        if (!audioCtx) {
-            try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (AudioContext) audioCtx = new AudioContext();
-            } catch(e) { console.warn("Audio tidak didukung", e); }
-        }
-    }
-    
-    function playHitSound(force) {
-        if(!audioCtx) return;
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(200 + (force * 3), audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.1);
-        gainNode.gain.setValueAtTime(Math.min(force / 30, 0.4), audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        osc.connect(gainNode); gainNode.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-    }
+    const audioManager = {
+        initialized: false,
+        isMuted: false,
+        bgmVolume: -18,
+        sfxVolume: -5,
+        synths: {},
+        lastClackTime: 0, // Tambahkan tracker waktu ini
 
-    function playPocketSound() {
-        if(!audioCtx) return;
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-        osc.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.15);
-        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-        osc.connect(gainNode); gainNode.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-    }
+        async init() {
+            if (this.initialized) return;
+            await Tone.start();
+
+            // Set global volume node
+            Tone.Destination.volume.value = 0;
+
+            // -- BGM Setup (Ska/Reggae Upbeat Fun) --
+            this.synths.bgmChord = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "triangle" },
+                envelope: { attack: 0.05, decay: 0.1, sustain: 0.2, release: 0.5 }
+            }).toDestination();
+            this.synths.bgmChord.volume.value = this.bgmVolume;
+
+            this.synths.bgmBass = new Tone.MonoSynth({
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.05, decay: 0.2, sustain: 0.4, release: 0.5 }
+            }).toDestination();
+            this.synths.bgmBass.volume.value = this.bgmVolume + 4;
+
+            // Chord Progression: C - F - G - C
+            const chords = [
+                ["C4", "E4", "G4"], ["F3", "A3", "C4"], 
+                ["G3", "B3", "D4"], ["C4", "E4", "G4"]
+            ];
+            const bassNotes = ["C3", "F2", "G2", "C3"];
+
+            let step = 0;
+            Tone.Transport.scheduleRepeat((time) => {
+                let beatInMeasure = step % 16;
+                let chordIndex = Math.floor(step / 16) % 4;
+
+                // Bass on Downbeats
+                if (beatInMeasure === 0 || beatInMeasure === 8) {
+                    this.synths.bgmBass.triggerAttackRelease(bassNotes[chordIndex], "8n", time);
+                }
+                // Chords on Upbeats (Ska style)
+                if (beatInMeasure === 2 || beatInMeasure === 6 || beatInMeasure === 10 || beatInMeasure === 14) {
+                    this.synths.bgmChord.triggerAttackRelease(chords[chordIndex], "16n", time);
+                }
+                step++;
+            }, "16n");
+
+            Tone.Transport.bpm.value = 105;
+            Tone.Transport.start();
+
+            // -- SFX Setup --
+            // Suara Geser Striker
+            this.synths.slide = new Tone.NoiseSynth({
+                noise: { type: 'pink' }, envelope: { attack: 0.01, decay: 0.05, sustain: 0, release: 0.01 }
+            }).toDestination();
+            this.synths.slide.volume.value = this.sfxVolume - 12;
+
+            // Suara Drop/Letakkan
+            this.synths.drop = new Tone.MembraneSynth({
+                pitchDecay: 0.05, octaves: 3, envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.1 }
+            }).toDestination();
+            this.synths.drop.volume.value = this.sfxVolume;
+
+            // Suara Tarik Kekeran (Ratchet/Pegas)
+            this.synths.ratchet = new Tone.Synth({
+                oscillator: { type: 'square' }, envelope: { attack: 0.005, decay: 0.02, sustain: 0, release: 0.01 }
+            }).toDestination();
+            this.synths.ratchet.volume.value = this.sfxVolume - 15;
+
+            // Suara Tembak (Thud)
+            this.synths.shoot = new Tone.MembraneSynth({
+                pitchDecay: 0.1, octaves: 2
+            }).toDestination();
+            this.synths.shoot.volume.value = this.sfxVolume;
+
+            // Suara Benturan Koin (Clack)
+            this.synths.clack = new Tone.PluckSynth({
+                attackNoise: 1, dampening: 2000, resonance: 0.8
+            }).toDestination();
+
+            // Suara Masuk Lubang (Ting!)
+            this.synths.pocket = new Tone.PolySynth(Tone.Synth, {
+                envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.8 }
+            }).toDestination();
+            this.synths.pocket.volume.value = this.sfxVolume - 5;
+
+            // Suara Pelanggaran (Tet-tot)
+            this.synths.foul = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "sawtooth" }
+            }).toDestination();
+            this.synths.foul.volume.value = this.sfxVolume - 5;
+
+            this.initialized = true;
+        },
+
+        toggleMute() {
+            this.isMuted = !this.isMuted;
+            Tone.Destination.mute = this.isMuted;
+            return this.isMuted;
+        },
+
+        playSlide() { if(this.initialized) this.synths.slide.triggerAttackRelease("32n"); },
+        playDrop() { if(this.initialized) this.synths.drop.triggerAttackRelease("G3", "16n"); },
+        playRatchet(dist) {
+            if(this.initialized) {
+                // Nada semakin tinggi saat ditarik semakin jauh
+                let freq = 300 + (dist * 2.5);
+                this.synths.ratchet.triggerAttackRelease(freq, "64n");
+            }
+        },
+        playShoot(force) {
+            if(this.initialized) {
+                this.synths.shoot.triggerAttackRelease("C2", "8n");
+            }
+        },
+        playClack(force) {
+            if(this.initialized && force > 1) {
+                let now = Tone.now();
+                // Cegah crash dengan Rate-limiting: Beri jeda minimal 20ms antar bunyi benturan
+                if (now - this.lastClackTime > 0.02) {
+                    this.synths.clack.volume.value = Math.max(-25, -35 + force);
+                    this.synths.clack.triggerAttack("E5", now);
+                    this.lastClackTime = now;
+                }
+            }
+        },
+        playPocket() {
+            if(this.initialized) {
+                this.synths.pocket.triggerAttackRelease(["C5", "E5", "G5"], "8n");
+            }
+        },
+        playFoul() {
+            if(this.initialized) {
+                this.synths.foul.triggerAttackRelease(["C3", "Eb3"], "8n");
+            }
+        }
+    };
+
+    btnMute.addEventListener('click', (e) => {
+        const isMuted = audioManager.toggleMute();
+        e.target.innerText = isMuted ? '🔇' : '🔊';
+    });
 
     function showToast(text, gradientStr = "linear-gradient(to right, #3b82f6, #8b5cf6)") {
         toastEl.innerText = text;
@@ -296,14 +417,13 @@
             particles.push({
                 x: x, y: y,
                 vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
-                life: 1.0, color: color,
-                size: Math.random() * 4 + 2
+                life: 1.0, color: color, size: Math.random() * 4 + 2
             });
         }
     }
 
-    /* PENTING: Semua logika render dipindah ke fungsi utama draw() */
-    function drawEffects() {
+    function updateParticles() {
+        fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
         for(let i = particles.length - 1; i >= 0; i--) {
             let p = particles[i];
             p.x += p.vx; p.y += p.vy; 
@@ -312,65 +432,60 @@
             if(p.life <= 0) {
                 particles.splice(i, 1);
             } else {
-                ctx.save();
-                ctx.globalAlpha = Math.max(0, p.life);
-                ctx.fillStyle = p.color;
-                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
-                ctx.restore();
+                fxCtx.globalAlpha = Math.max(0, p.life);
+                fxCtx.fillStyle = p.color;
+                fxCtx.beginPath(); fxCtx.arc(p.x, p.y, p.size, 0, Math.PI*2); fxCtx.fill();
             }
         }
         
         if (flickAnim.active) {
             flickAnim.life -= 0.05; 
             if (flickAnim.life <= 0) { flickAnim.active = false; } else {
-                ctx.save();
+                fxCtx.save();
                 let progress = 1.0 - flickAnim.life;
                 
                 if(progress < 0.6) {
-                    ctx.beginPath();
-                    ctx.arc(flickAnim.startX, flickAnim.startY, progress * boardSize * 0.2, 0, Math.PI*2);
-                    ctx.strokeStyle = `rgba(255,255,255,${1 - progress/.6})`;
-                    ctx.lineWidth = boardSize * 0.01;
-                    ctx.stroke();
+                    fxCtx.beginPath();
+                    fxCtx.arc(flickAnim.startX, flickAnim.startY, progress * boardSize * 0.2, 0, Math.PI*2);
+                    fxCtx.strokeStyle = `rgba(255,255,255,${1 - progress/.6})`;
+                    fxCtx.lineWidth = boardSize * 0.01;
+                    fxCtx.stroke();
                 }
 
-                ctx.globalAlpha = Math.max(0, flickAnim.life);
+                fxCtx.globalAlpha = Math.max(0, flickAnim.life);
                 const dist = progress * (boardSize * 0.15); 
                 const fx = flickAnim.startX + Math.cos(flickAnim.angle) * dist;
                 const fy = flickAnim.startY + Math.sin(flickAnim.angle) * dist;
                 
-                ctx.translate(fx, fy); ctx.rotate(flickAnim.angle + Math.PI/2);
-                ctx.font = `${boardSize * 0.12}px Arial`; 
-                ctx.textAlign = "center"; ctx.textBaseline = "middle";
-                ctx.fillText("👆", 0, boardSize * 0.04); 
-                ctx.restore();
+                fxCtx.translate(fx, fy); fxCtx.rotate(flickAnim.angle + Math.PI/2);
+                fxCtx.font = `${boardSize * 0.12}px Arial`; 
+                fxCtx.textAlign = "center"; fxCtx.textBaseline = "middle";
+                fxCtx.fillText("👆", 0, boardSize * 0.04); 
+                fxCtx.restore();
             }
         }
 
         if (placeAnim.active) {
             placeAnim.life -= 0.02; 
             if (placeAnim.life <= 0) { placeAnim.active = false; } else {
-                ctx.save();
-                ctx.globalAlpha = Math.min(1, placeAnim.life * 2); 
+                fxCtx.save();
+                fxCtx.globalAlpha = Math.min(1, placeAnim.life * 2); 
                 let progress = 1.0 - placeAnim.life;
                 let dropOffset = Math.max(0, (0.3 - progress) * 150); 
                 
-                ctx.translate(placeAnim.x, placeAnim.y - dropOffset);
-                ctx.font = `${boardSize * 0.12}px Arial`; 
-                ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-                ctx.fillText("👇", 0, 0); 
+                fxCtx.translate(placeAnim.x, placeAnim.y - dropOffset);
+                fxCtx.font = `${boardSize * 0.12}px Arial`; 
+                fxCtx.textAlign = "center"; fxCtx.textBaseline = "bottom";
+                fxCtx.fillText("👇", 0, 0); 
                 
-                ctx.beginPath();
-                ctx.arc(0, boardSize * 0.02, boardSize * 0.05, 0, Math.PI*2);
-                ctx.strokeStyle = `rgba(255, 255, 255, ${placeAnim.life})`;
-                ctx.lineWidth = 4;
-                ctx.stroke();
-                
-                ctx.restore();
+                fxCtx.beginPath();
+                fxCtx.arc(0, boardSize * 0.02, boardSize * 0.05, 0, Math.PI*2);
+                fxCtx.strokeStyle = `rgba(255, 255, 255, ${placeAnim.life})`;
+                fxCtx.lineWidth = 4; fxCtx.stroke();
+                fxCtx.restore();
             }
         }
 
-        // Animasi Tangan Geser (Placement)
         if (isPlacingStriker && !isDraggingToPlace && !(turn === 2 && isPVE)) {
             tutorialAnimTime += 0.05;
             let baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
@@ -378,55 +493,21 @@
             let handY = turn === 1 ? baselineY + boardSize * 0.08 : baselineY - boardSize * 0.08;
             let emoji = turn === 1 ? "👆" : "👇";
 
-            ctx.save();
-            ctx.font = `${boardSize * 0.08}px Arial`;
-            ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.globalAlpha = 0.6 + Math.sin(tutorialAnimTime * 2) * 0.2; 
-            ctx.fillText(emoji, handX, handY);
+            fxCtx.save();
+            fxCtx.font = `${boardSize * 0.08}px Arial`;
+            fxCtx.textAlign = "center"; fxCtx.textBaseline = "middle";
+            fxCtx.globalAlpha = 0.6 + Math.sin(tutorialAnimTime * 2) * 0.2; 
+            fxCtx.fillText(emoji, handX, handY);
 
-            ctx.beginPath();
-            ctx.moveTo(boardSize * 0.3, handY);
-            ctx.lineTo(boardSize * 0.7, handY);
-            ctx.strokeStyle = `rgba(255,255,255,0.3)`;
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]);
-            ctx.stroke();
-            ctx.restore();
+            fxCtx.beginPath();
+            fxCtx.moveTo(boardSize * 0.3, handY);
+            fxCtx.lineTo(boardSize * 0.7, handY);
+            fxCtx.strokeStyle = `rgba(255,255,255,0.3)`;
+            fxCtx.lineWidth = 2; fxCtx.setLineDash([5, 5]); fxCtx.stroke();
+            fxCtx.restore();
         }
-
-        // Animasi Tutorial Menarik Tembakan (Aiming Demo)
-        if (!isPlacingStriker && !isAiming && !isMoving && !(turn === 2 && isPVE) && striker.active) {
-            pullTutorialAnimTime += 0.03;
-            let cycle = pullTutorialAnimTime % 1.5; 
-            if (cycle < 1.0) {
-                let pullDistance = cycle * (boardSize * 0.15); 
-                let pullDir = turn === 1 ? 1 : -1; 
-                let handX = striker.x;
-                let handY = striker.y + (pullDistance * pullDir);
-
-                ctx.save();
-                ctx.font = `${boardSize * 0.08}px Arial`;
-                ctx.textAlign = "center"; ctx.textBaseline = "middle";
-                let alpha = cycle < 0.2 ? cycle / 0.2 : (1.0 - cycle) / 0.8;
-                ctx.globalAlpha = Math.max(0, alpha) * 0.8; 
-                
-                ctx.fillText("👆", handX, handY + (boardSize * 0.02 * pullDir));
-
-                if (pullDistance > 5) {
-                    ctx.beginPath(); 
-                    ctx.moveTo(striker.x, striker.y);
-                    let visualDist = pullDistance * 1.5; 
-                    let endX = striker.x;
-                    let endY = striker.y - (visualDist * pullDir); 
-                    
-                    ctx.lineTo(endX, endY);
-                    let pR = Math.min(pullDistance / 100, 1);
-                    ctx.strokeStyle = `rgba(255, ${Math.floor(255 - pR*255)}, ${Math.floor(255 - pR*100)}, ${alpha})`; 
-                    ctx.lineWidth = 4; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
-                }
-                ctx.restore();
-            }
-        }
+        
+        fxCtx.globalAlpha = 1.0;
     }
 
     function resize() {
@@ -439,7 +520,11 @@
         boardSize = Math.floor(size);
         
         canvas.width = boardSize; canvas.height = boardSize;
+        fxCanvas.width = boardSize; fxCanvas.height = boardSize;
+
         canvas.style.width = `${boardSize}px`; canvas.style.height = `${boardSize}px`;
+        fxCanvas.style.width = `${boardSize}px`; fxCanvas.style.height = `${boardSize}px`;
+        fxCanvas.style.top = `${(ch - boardSize) / 2}px`; fxCanvas.style.left = `${(cw - boardSize) / 2}px`;
 
         setupPockets();
     }
@@ -475,11 +560,9 @@
         
         for (let i = 0; i < 12; i++) {
             let a = (i * 30) * Math.PI / 180;
-            
-            // Perbaikan: Pola selang-seling konsisten memastikan tepat 6 koin Putih dan 6 koin Hitam di luar (Total menjadi 9 vs 9)
+            // Penyesuaian agar persis 6 putih dan 6 hitam
             let type = (i % 2 === 0) ? 1 : 2; 
             let color = type === 1 ? colorWhitePiece : colorBlackPiece;
-            
             let dist = i % 2 === 0 ? (pr * 4.2) : (pr * 3.6);
             pieces.push({ x: cx + Math.cos(a) * dist, y: cy + Math.sin(a) * dist, radius: pr, vx: 0, vy: 0, mass: 1, type: type, active: true, color: color });
         }
@@ -492,11 +575,11 @@
         firstHitPiece = null; 
         isDraggingToPlace = false;
         tutorialAnimTime = 0;
-        pullTutorialAnimTime = 0; 
         
         const baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
         striker.y = baselineY; 
         striker.x = boardSize / 2;
+        lastDragPlaceX = striker.x;
         
         let attempts = 0;
         while (!isPlacementValid(striker.x, striker.y) && attempts < 50) {
@@ -509,8 +592,11 @@
         const p1Box = document.getElementById('p1-box');
         const p2Box = document.getElementById('p2-box');
         
-        if (turn === 1) { p1Box.classList.add('active-turn'); p2Box.classList.remove('active-turn'); } 
-        else { p2Box.classList.add('active-turn'); p1Box.classList.remove('active-turn'); }
+        if (turn === 1) {
+            p1Box.classList.add('active-turn'); p2Box.classList.remove('active-turn');
+        } else {
+            p2Box.classList.add('active-turn'); p1Box.classList.remove('active-turn');
+        }
         
         strikerMessage.classList.remove('hidden');
         if (pendingQueenCover) {
@@ -562,12 +648,14 @@
             let minX = boardSize * 0.2; let maxX = boardSize * 0.8;
             striker.x = Math.max(minX, Math.min(maxX, pos.x)); 
             if (!isPlacementValid(striker.x, striker.y)) { striker.x = oldX; }
+            lastDragPlaceX = striker.x;
             return;
         }
 
         if (!isPlacingStriker && !isAiming && !isMoving) {
             if (isPointInStriker(pos.x, pos.y)) {
                 isAiming = true; dragStart = pos; dragCurrent = pos;
+                lastAimDist = 0;
             }
         }
     }
@@ -581,8 +669,23 @@
             let minX = boardSize * 0.2; let maxX = boardSize * 0.8;
             striker.x = Math.max(minX, Math.min(maxX, pos.x)); 
             if (!isPlacementValid(striker.x, striker.y)) { striker.x = oldX; }
+            
+            // SFX Geser Striker
+            if (Math.abs(striker.x - lastDragPlaceX) > 10) {
+                audioManager.playSlide();
+                lastDragPlaceX = striker.x;
+            }
+
         } else if (isAiming) {
             dragCurrent = pos;
+            
+            // SFX Tarik Kekeran (Ratchet)
+            let dx = dragStart.x - dragCurrent.x; let dy = dragStart.y - dragCurrent.y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            if (Math.abs(dist - lastAimDist) > 12) {
+                audioManager.playRatchet(dist);
+                lastAimDist = dist;
+            }
         }
     }
 
@@ -592,6 +695,7 @@
         if (isPlacingStriker && isDraggingToPlace) {
             isDraggingToPlace = false;
             isPlacingStriker = false;
+            audioManager.playDrop(); // SFX Jatuh
             strikerMessage.innerText = "2. Tarik ke belakang, bidik & lepaskan!";
             strikerMessage.style.background = "linear-gradient(to right, #10b981, #059669)"; 
             return;
@@ -611,7 +715,7 @@
                 flickAnim = { active: true, startX: striker.x - launchDx * striker.radius, startY: striker.y - launchDy * striker.radius, angle: Math.atan2(launchDy, launchDx), life: 1.0 };
                 isMoving = true;
                 strikerMessage.classList.add('hidden');
-                playHitSound(force);
+                audioManager.playShoot(force); // SFX Tembak Thud
             }
         }
     }
@@ -638,6 +742,7 @@
                 striker.x = boardSize * 0.2 + Math.random() * (boardSize * 0.6); attempts++;
             }
             isPlacingStriker = false;
+            audioManager.playDrop();
             
             let target = null; let minDist = Infinity;
             pieces.forEach(p => {
@@ -659,7 +764,8 @@
             striker.vx = (dx / dist) * force; striker.vy = (dy / dist) * force;
             flickAnim = { active: true, startX: striker.x - (dx/dist)*striker.radius, startY: striker.y - (dy/dist)*striker.radius, angle: Math.atan2(dy/dist, dx/dist), life: 1.0 };
             
-            isMoving = true; strikerMessage.classList.add('hidden'); playHitSound(force);
+            isMoving = true; strikerMessage.classList.add('hidden'); 
+            audioManager.playShoot(force);
         }, 1200);
     }
 
@@ -680,7 +786,7 @@
             p2.vx += p * p1.mass * nx; p2.vy += p * p1.mass * ny;
 
             let impactForce = Math.sqrt(kx*kx + ky*ky);
-            if(impactForce > 1) playHitSound(impactForce);
+            audioManager.playClack(impactForce); // SFX Benturan Koin
             return true;
         }
         return false;
@@ -767,10 +873,8 @@
                 showToast(`🚨 Pelanggaran: ${foulReason}`, "linear-gradient(to right, #ef4444, #991b1b)");
             }
             
-            updateUI(); 
-            // Cek Menang Setelah Foul (Jika koin musuh habis karena foul ini)
-            if (checkWinCondition()) return; 
-            setTimeout(switchTurn, 1000);
+            audioManager.playFoul(); // SFX Foul
+            updateUI(); setTimeout(switchTurn, 1000);
         } else {
             let extraTurn = false;
 
@@ -797,26 +901,17 @@
 
             updateUI();
             
-            // Cek Menang Secara Ketat!
-            if (checkWinCondition()) return;
+            // Cek Menang Murni Hanya Jika Ratu Tidak Sedang Di-Cover
+            if (!pendingQueenCover) {
+                if (piecesLeft[1] === 0 || piecesLeft[2] === 0) {
+                    let winner = scores[1] > scores[2] ? 1 : (scores[2] > scores[1] ? 2 : (piecesLeft[1] === 0 ? 1 : 2));
+                    endGame(winner);
+                    return; // Mencegah game lanjut ke startTurn
+                }
+            }
 
             if (extraTurn) { startTurn(); } else { switchTurn(); }
         }
-    }
-
-    // Fungsi Pembantu Khusus Untuk Mengecek Kemenangan dengan Pasti
-    function checkWinCondition() {
-        if ((piecesLeft[1] === 0 || piecesLeft[2] === 0) && !pendingQueenCover) { 
-            let winner = 1;
-            if (scores[2] > scores[1]) {
-                winner = 2;
-            } else if (scores[1] === scores[2]) {
-                winner = piecesLeft[1] === 0 ? 1 : 2; 
-            }
-            endGame(winner); 
-            return true; // Return TRUE agar eksekusi turn berhenti total
-        }
-        return false;
     }
 
     function updatePhysics() {
@@ -833,7 +928,9 @@
             p.vx *= friction; p.vy *= friction;
 
             if (checkPocket(p)) {
-                p.active = false; playPocketSound(); createParticles(p.x, p.y);
+                p.active = false; 
+                audioManager.playPocket(); // SFX Masuk Lubang
+                createParticles(p.x, p.y);
                 pocketedThisStrike.push(p); continue; 
             }
 
@@ -885,15 +982,7 @@
     }
 
     function draw() {
-        // Membersihkan canvas dan menggambar background kayu (border ikut ter-draw di dalam agar presisi)
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.fillStyle = '#fcd34d'; // Warna border frame luar
-        ctx.beginPath(); ctx.roundRect(0, 0, canvas.width, canvas.height, 20); ctx.fill();
-
-        ctx.fillStyle = '#f59e0b'; // Warna kayu tengah
-        let innerMargin = 4;
-        ctx.beginPath(); ctx.roundRect(innerMargin, innerMargin, canvas.width - innerMargin*2, canvas.height - innerMargin*2, 16); ctx.fill();
+        ctx.fillStyle = '#fbbf24'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         let wallT = boardSize * 0.05; ctx.strokeStyle = '#b45309'; ctx.lineWidth = wallT;
         ctx.strokeRect(wallT/2, wallT/2, canvas.width - wallT, canvas.height - wallT);
@@ -946,19 +1035,16 @@
                 }
             }
         }
-        
-        // Panggil drawEffects di dalam loop draw() utama agar digambar di canvas yang sama
-        drawEffects();
     }
 
     function gameLoop() {
-        if (isPlaying) { updatePhysics(); draw(); }
-        else if (gameOverOverlay.classList.contains('hidden') === false) { draw(); } 
+        if (isPlaying) { updatePhysics(); draw(); updateParticles(); }
+        else if (gameOverOverlay.classList.contains('hidden') === false) { updateParticles(); } 
         requestAnimationFrame(gameLoop);
     }
 
-    btnPvE.addEventListener('click', () => { isPVE = true; startGame(); });
-    btnPvP.addEventListener('click', () => { isPVE = false; startGame(); });
+    btnPvE.addEventListener('click', async () => { await audioManager.init(); isPVE = true; startGame(); });
+    btnPvP.addEventListener('click', async () => { await audioManager.init(); isPVE = false; startGame(); });
     btnRestart.addEventListener('click', startGame);
     
     btnHowto.addEventListener('click', () => {
@@ -985,7 +1071,7 @@
     });
 
     function startGame() {
-        initAudio(); resize(); setupGame(); isPlaying = true;
+        resize(); setupGame(); isPlaying = true;
         menuOverlay.classList.add('hidden'); gameOverOverlay.classList.add('hidden'); 
         topBar.classList.remove('opacity-0', 'pointer-events-none'); 
         bottomBar.classList.remove('opacity-0', 'pointer-events-none');
