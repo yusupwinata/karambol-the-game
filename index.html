@@ -226,6 +226,7 @@
     
     // State Kontrol
     let isPlacingStriker = false;
+    let isDraggingToPlace = false; // State baru untuk drag & drop penempatan
     let isAiming = false;
     let isMoving = false;
     let dragStart = { x: 0, y: 0 };
@@ -236,13 +237,14 @@
     let firstHitPiece = null; 
     let toastTimeout = null;
 
-    // State Animasi Tangan Meletakkan Koin
+    // State Animasi
     let placeAnim = { active: false, x: 0, y: 0, life: 0 };
+    let tutorialAnimTime = 0; // State untuk tangan penunjuk geser
 
     // Warna Ceria
     const colorWhitePiece = '#ffffff';
-    const colorBlackPiece = '#312e81'; // Biru dongker cerah ganti hitam pekat
-    const colorQueen = '#f43f5e'; // Pink kemerahan
+    const colorBlackPiece = '#312e81'; 
+    const colorQueen = '#f43f5e'; 
     const confettiColors = ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6'];
 
     let audioCtx = null;
@@ -257,7 +259,6 @@
         }
     }
     
-    // Suara pantulan agak lebih tinggi nadanya agar terdengar lucu/cerah
     function playHitSound(force) {
         if(!audioCtx) return;
         if(audioCtx.state === 'suspended') audioCtx.resume();
@@ -272,7 +273,6 @@
         osc.start(); osc.stop(audioCtx.currentTime + 0.1);
     }
 
-    // Suara lubang seperti efek ajaib
     function playPocketSound() {
         if(!audioCtx) return;
         if(audioCtx.state === 'suspended') audioCtx.resume();
@@ -304,7 +304,6 @@
     let flickAnim = { active: false, startX: 0, startY: 0, angle: 0, life: 0 };
 
     function createParticles(x, y) {
-        // Confetti effect
         for(let i=0; i<30; i++) {
             let color = confettiColors[Math.floor(Math.random() * confettiColors.length)];
             particles.push({
@@ -321,7 +320,7 @@
         for(let i = particles.length - 1; i >= 0; i--) {
             let p = particles[i];
             p.x += p.vx; p.y += p.vy; 
-            p.vx *= 0.95; p.vy *= 0.95; // Perlambatan confetti
+            p.vx *= 0.95; p.vy *= 0.95; 
             p.life -= 0.02;
             if(p.life <= 0) {
                 particles.splice(i, 1);
@@ -332,14 +331,13 @@
             }
         }
         
-        // Animasi Tangan Menyentil (Diperkeren)
+        // Animasi Tangan Menyentil (Flick)
         if (flickAnim.active) {
-            flickAnim.life -= 0.05; // Animasi lebih cepat
+            flickAnim.life -= 0.05; 
             if (flickAnim.life <= 0) { flickAnim.active = false; } else {
                 fxCtx.save();
                 let progress = 1.0 - flickAnim.life;
                 
-                // Efek lingkaran "Poof!" angin
                 if(progress < 0.6) {
                     fxCtx.beginPath();
                     fxCtx.arc(flickAnim.startX, flickAnim.startY, progress * boardSize * 0.2, 0, Math.PI*2);
@@ -349,12 +347,12 @@
                 }
 
                 fxCtx.globalAlpha = Math.max(0, flickAnim.life);
-                const dist = progress * (boardSize * 0.15); // Jarak jari maju lebih jauh
+                const dist = progress * (boardSize * 0.15); 
                 const fx = flickAnim.startX + Math.cos(flickAnim.angle) * dist;
                 const fy = flickAnim.startY + Math.sin(flickAnim.angle) * dist;
                 
                 fxCtx.translate(fx, fy); fxCtx.rotate(flickAnim.angle + Math.PI/2);
-                fxCtx.font = `${boardSize * 0.12}px Arial`; // Ukuran jari lebih besar
+                fxCtx.font = `${boardSize * 0.12}px Arial`; 
                 fxCtx.textAlign = "center"; fxCtx.textBaseline = "middle";
                 fxCtx.fillText("👆", 0, boardSize * 0.04); 
                 fxCtx.restore();
@@ -363,21 +361,19 @@
 
         // Animasi Tangan Meletakkan Koin
         if (placeAnim.active) {
-            placeAnim.life -= 0.02; // Fade out perlahan
+            placeAnim.life -= 0.02; 
             if (placeAnim.life <= 0) { placeAnim.active = false; } else {
                 fxCtx.save();
                 fxCtx.globalAlpha = Math.min(1, placeAnim.life * 2); 
                 let progress = 1.0 - placeAnim.life;
                 
-                // Efek tangan turun dari atas
                 let dropOffset = Math.max(0, (0.3 - progress) * 150); 
                 
                 fxCtx.translate(placeAnim.x, placeAnim.y - dropOffset);
                 fxCtx.font = `${boardSize * 0.12}px Arial`; 
                 fxCtx.textAlign = "center"; fxCtx.textBaseline = "bottom";
-                fxCtx.fillText("👇", 0, 0); // Emoji Tangan
+                fxCtx.fillText("👇", 0, 0); 
                 
-                // Efek cincin sorotan
                 fxCtx.beginPath();
                 fxCtx.arc(0, boardSize * 0.02, boardSize * 0.05, 0, Math.PI*2);
                 fxCtx.strokeStyle = `rgba(255, 255, 255, ${placeAnim.life})`;
@@ -386,6 +382,31 @@
                 
                 fxCtx.restore();
             }
+        }
+
+        // Animasi Tutorial Menunjuk & Menggeser di Awal Turn
+        if (isPlacingStriker && !isDraggingToPlace && !(turn === 2 && isPVE)) {
+            tutorialAnimTime += 0.05;
+            let baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
+            let handX = (boardSize / 2) + Math.sin(tutorialAnimTime) * (boardSize * 0.2);
+            let handY = turn === 1 ? baselineY + boardSize * 0.08 : baselineY - boardSize * 0.08;
+            let emoji = turn === 1 ? "👆" : "👇";
+
+            fxCtx.save();
+            fxCtx.font = `${boardSize * 0.08}px Arial`;
+            fxCtx.textAlign = "center"; fxCtx.textBaseline = "middle";
+            fxCtx.globalAlpha = 0.6 + Math.sin(tutorialAnimTime * 2) * 0.2; 
+            fxCtx.fillText(emoji, handX, handY);
+
+            // Garis putus-putus jejak geseran
+            fxCtx.beginPath();
+            fxCtx.moveTo(boardSize * 0.3, handY);
+            fxCtx.lineTo(boardSize * 0.7, handY);
+            fxCtx.strokeStyle = `rgba(255,255,255,0.3)`;
+            fxCtx.lineWidth = 2;
+            fxCtx.setLineDash([5, 5]);
+            fxCtx.stroke();
+            fxCtx.restore();
         }
         
         fxCtx.globalAlpha = 1.0;
@@ -454,9 +475,20 @@
         isMoving = false; isAiming = false;
         striker.active = true; striker.vx = 0; striker.vy = 0;
         firstHitPiece = null; 
+        isDraggingToPlace = false;
+        tutorialAnimTime = 0;
         
         const baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
-        striker.y = baselineY; striker.x = boardSize / 2;
+        striker.y = baselineY; 
+        striker.x = boardSize / 2;
+        
+        // Pastikan posisi awal tidak menabrak koin lain
+        let attempts = 0;
+        while (!isPlacementValid(striker.x, striker.y) && attempts < 50) {
+            striker.x = boardSize * 0.2 + Math.random() * (boardSize * 0.6);
+            attempts++;
+        }
+        
         isPlacingStriker = true;
         
         // Update UI Box Styling Ceria
@@ -475,7 +507,7 @@
             strikerMessage.style.background = "linear-gradient(to right, #f59e0b, #d97706)";
         } else {
             let trg = turn === 1 ? "Putih" : "Hitam";
-            strikerMessage.innerText = `🎯 Giliran Pemain ${turn}. Incar Koin ${trg}!`;
+            strikerMessage.innerText = `1. Geser & Lepas untuk menaruh Striker! (Incar ${trg})`;
             strikerMessage.style.background = turn === 1 ? "linear-gradient(to right, #3b82f6, #6366f1)" : "linear-gradient(to right, #6b7280, #374151)";
         }
 
@@ -514,13 +546,11 @@
         const pos = getMousePos(e);
         
         if (isPlacingStriker) {
-            if (!isPlacementValid(striker.x, striker.y)) {
-                showToast("Oops! Terhalang koin lain. Geser dikit yuk!", "linear-gradient(to right, #ef4444, #b91c1c)");
-                return;
-            }
-            isPlacingStriker = false;
-            strikerMessage.innerText = "Tarik ke belakang, bidik, dan lepaskan!";
-            strikerMessage.style.background = "linear-gradient(to right, #10b981, #059669)"; // Hijau ceria
+            isDraggingToPlace = true;
+            let oldX = striker.x; 
+            let minX = boardSize * 0.2; let maxX = boardSize * 0.8;
+            striker.x = Math.max(minX, Math.min(maxX, pos.x)); 
+            if (!isPlacementValid(striker.x, striker.y)) { striker.x = oldX; }
             return;
         }
 
@@ -535,34 +565,43 @@
         if (!isPlaying || (turn === 2 && isPVE)) return;
         const pos = getMousePos(e);
         
-        if (isPlacingStriker) {
-            let oldX = striker.x; let oldY = striker.y;
-            let baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
+        if (isPlacingStriker && isDraggingToPlace) {
+            let oldX = striker.x; 
             let minX = boardSize * 0.2; let maxX = boardSize * 0.8;
-            striker.x = Math.max(minX, Math.min(maxX, pos.x)); striker.y = baselineY;
-            if (!isPlacementValid(striker.x, striker.y)) { striker.x = oldX; striker.y = oldY; }
+            striker.x = Math.max(minX, Math.min(maxX, pos.x)); 
+            if (!isPlacementValid(striker.x, striker.y)) { striker.x = oldX; }
         } else if (isAiming) {
             dragCurrent = pos;
         }
     }
 
     function handleEnd(e) {
-        if (!isPlaying || !isAiming || (turn === 2 && isPVE)) return;
-        isAiming = false;
+        if (!isPlaying || (turn === 2 && isPVE)) return;
         
-        let dx = dragStart.x - dragCurrent.x; let dy = dragStart.y - dragCurrent.y;
-        let dist = Math.sqrt(dx*dx + dy*dy);
-        
-        if (dist > 5) {
-            const forceScale = 0.2;
-            let force = Math.min(dist * forceScale, 35);
-            const launchDx = dx / dist; const launchDy = dy / dist;
+        if (isPlacingStriker && isDraggingToPlace) {
+            isDraggingToPlace = false;
+            isPlacingStriker = false;
+            strikerMessage.innerText = "2. Tarik ke belakang, bidik & lepaskan!";
+            strikerMessage.style.background = "linear-gradient(to right, #10b981, #059669)"; // Hijau ceria
+            return;
+        }
 
-            striker.vx = launchDx * force; striker.vy = launchDy * force;
-            flickAnim = { active: true, startX: striker.x - launchDx * striker.radius, startY: striker.y - launchDy * striker.radius, angle: Math.atan2(launchDy, launchDx), life: 1.0 };
-            isMoving = true;
-            strikerMessage.classList.add('hidden');
-            playHitSound(force);
+        if (isAiming) {
+            isAiming = false;
+            let dx = dragStart.x - dragCurrent.x; let dy = dragStart.y - dragCurrent.y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist > 5) {
+                const forceScale = 0.2;
+                let force = Math.min(dist * forceScale, 35);
+                const launchDx = dx / dist; const launchDy = dy / dist;
+
+                striker.vx = launchDx * force; striker.vy = launchDy * force;
+                flickAnim = { active: true, startX: striker.x - launchDx * striker.radius, startY: striker.y - launchDy * striker.radius, angle: Math.atan2(launchDy, launchDx), life: 1.0 };
+                isMoving = true;
+                strikerMessage.classList.add('hidden');
+                playHitSound(force);
+            }
         }
     }
 
@@ -570,7 +609,11 @@
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleEnd);
     canvas.addEventListener('touchstart', (e) => { if(e.target === canvas) e.preventDefault(); handleStart(e); }, {passive: false});
-    window.addEventListener('touchmove', (e) => { if (isPlaying && (isAiming || isPlacingStriker)) { e.preventDefault(); } handleMove(e); }, {passive: false});
+    window.addEventListener('touchmove', (e) => { 
+        // Cegah scroll saat sedang placing atau aiming
+        if (isPlaying && (isAiming || isDraggingToPlace)) { e.preventDefault(); } 
+        handleMove(e); 
+    }, {passive: false});
     window.addEventListener('touchend', handleEnd);
 
     function botTurn() {
@@ -636,7 +679,6 @@
     function checkPocket(p) {
         for (let pocket of pockets) {
             let dx = p.x - pocket.x; let dy = p.y - pocket.y;
-            // Radius penyedotan diperbesar 30% agar koin langsung tertelan saat di bibir lubang
             if (Math.sqrt(dx*dx + dy*dy) < pocket.r * 1.3) return true;
         }
         return false;
@@ -770,7 +812,6 @@
                 pocketedThisStrike.push(p); continue; 
             }
 
-            // Dinding Pantul Normal yang Mutlak (Mencegah koin nembus dinding manapun)
             let margin = boardSize * 0.05;
             
             if (p.x - p.radius < margin) { p.x = margin + p.radius; p.vx *= -0.8; }
@@ -813,14 +854,12 @@
         let winText = winner === 1 ? "Pemain 1 Menang!" : (isPVE ? "Robot Menang!" : "Pemain 2 Menang!");
         document.getElementById('winner-text').innerText = winText;
         
-        // Tembak confetti banyak banyak di tengah layar
         createParticles(boardSize/2, boardSize/2);
         createParticles(boardSize/3, boardSize/2);
         createParticles(boardSize/1.5, boardSize/2);
     }
 
     function draw() {
-        // Papan cerah
         ctx.fillStyle = '#fbbf24'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         let wallT = boardSize * 0.05; ctx.strokeStyle = '#b45309'; ctx.lineWidth = wallT;
@@ -847,11 +886,9 @@
             if (!p.active) return;
             ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
             
-            // Efek kilap/cerah pada koin
             ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 2; ctx.stroke();
             ctx.beginPath(); ctx.arc(p.x, p.y, p.radius * 0.6, 0, Math.PI * 2); ctx.stroke();
             
-            // Pantulan cahaya (Highlight imut)
             ctx.fillStyle = 'rgba(255,255,255,0.4)';
             ctx.beginPath(); ctx.arc(p.x - p.radius*0.3, p.y - p.radius*0.3, p.radius*0.2, 0, Math.PI*2); ctx.fill();
         });
@@ -871,7 +908,7 @@
                     let vDist = Math.min(dist * 1.5, 150); let angle = Math.atan2(dy, dx); 
                     ctx.lineTo(striker.x + Math.cos(angle) * vDist, striker.y + Math.sin(angle) * vDist);
                     let pR = Math.min(dist / 100, 1);
-                    ctx.strokeStyle = `rgb(255, ${Math.floor(255 - pR*255)}, ${Math.floor(255 - pR*100)})`; // Garis bidik jadi oranye/kuning
+                    ctx.strokeStyle = `rgb(255, ${Math.floor(255 - pR*255)}, ${Math.floor(255 - pR*100)})`; 
                     ctx.lineWidth = 4 + (pR * 4); ctx.setLineDash([8, 8]); ctx.stroke(); ctx.setLineDash([]);
                 }
             }
@@ -880,7 +917,7 @@
 
     function gameLoop() {
         if (isPlaying) { updatePhysics(); draw(); updateParticles(); }
-        else if (gameOverOverlay.classList.contains('hidden') === false) { updateParticles(); } // Biarkan confetti jalan di game over
+        else if (gameOverOverlay.classList.contains('hidden') === false) { updateParticles(); } 
         requestAnimationFrame(gameLoop);
     }
 
