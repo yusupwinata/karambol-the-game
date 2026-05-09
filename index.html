@@ -261,7 +261,7 @@
         bgmVolume: -16,
         sfxVolume: -5,
         lastClackTime: 0,
-        lastRatchetTime: 0, // Tambahkan tracker waktu untuk suara ratchet
+        lastRatchetTime: 0,
         synths: {},
         
         async init() {
@@ -269,29 +269,57 @@
             await Tone.start();
             this.initialized = true;
 
-            Tone.Transport.bpm.value = 110;
+            // Tempo asik dan ceria (Bouncy)
+            Tone.Transport.bpm.value = 105;
 
-            // -- BGM Setup (Ceria Ska/Reggae style) --
+            // -- BGM Setup (Ceria, Fun, tapi Sangat Halus) --
+            // 1. Bass yang asik tapi bulat (Triangle wave)
             this.synths.bass = new Tone.Synth({
                 oscillator: { type: 'triangle' },
-                envelope: { attack: 0.05, decay: 0.2, sustain: 0.2, release: 1 }
+                envelope: { attack: 0.05, decay: 0.3, sustain: 0.1, release: 1 }
             }).toDestination();
             this.synths.bass.volume.value = this.bgmVolume;
 
+            // 2. Chords / Iringan ritmik (Sine wave, sangat lembut)
             this.synths.chord = new Tone.PolySynth(Tone.Synth, {
-                oscillator: { type: 'pwm', modulationFrequency: 0.2 },
-                envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.5 }
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.1, decay: 0.3, sustain: 0.2, release: 1 }
             }).toDestination();
-            this.synths.chord.volume.value = this.bgmVolume - 5;
+            this.synths.chord.volume.value = this.bgmVolume - 6;
 
-            const bassLine = ["C2", null, "G1", null, "C2", null, "F1", "G1"];
-            const chords = [null, ["C4", "E4", "G4"], null, ["C4", "E4", "G4"], null, ["F4", "A4", "C5"], null, ["G4", "B4", "D5"]];
+            // 3. Melodi utama: Bernada kayu marimba, di oktaf tengah (C4) agar aman di telinga
+            this.synths.melody = new Tone.Synth({
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.01, decay: 0.3, sustain: 0, release: 1 }
+            }).toDestination();
+            this.synths.melody.volume.value = this.bgmVolume - 2;
+
+            let stepCounter = 0;
             
             this.bgmLoop = new Tone.Loop(time => {
-                let step = Math.floor(Tone.Transport.position.split(':')[1] * 2 + Tone.Transport.position.split(':')[2] / 2) % 8;
-                if (bassLine[step]) this.synths.bass.triggerAttackRelease(bassLine[step], "8n", time);
-                if (chords[step]) this.synths.chord.triggerAttackRelease(chords[step], "16n", time);
-            }, "8n");
+                let beat = stepCounter % 16; // 16 step (1 Bar ketukan asik)
+
+                // Bassline yang asik dan melompat
+                if (beat === 0) this.synths.bass.triggerAttackRelease("C3", "8n", time);
+                else if (beat === 3) this.synths.bass.triggerAttackRelease("G2", "8n", time);
+                else if (beat === 8) this.synths.bass.triggerAttackRelease("F2", "8n", time);
+                else if (beat === 11) this.synths.bass.triggerAttackRelease("G2", "8n", time);
+
+                // Chords: Iringan "upbeat" untuk feel yang fun
+                if (beat === 4 || beat === 12) {
+                    let chord = beat === 4 ? ["C3", "E3", "G3"] : ["F3", "A3", "C4"];
+                    this.synths.chord.triggerAttackRelease(chord, "8n", time);
+                }
+
+                // Melodi Ceria & Fun (tanpa nada melengking memekakkan telinga)
+                if (beat === 0) this.synths.melody.triggerAttackRelease("C4", "16n", time);
+                else if (beat === 2) this.synths.melody.triggerAttackRelease("E4", "16n", time);
+                else if (beat === 4) this.synths.melody.triggerAttackRelease("G4", "16n", time);
+                else if (beat === 7) this.synths.melody.triggerAttackRelease("A4", "16n", time);
+                else if (beat === 10) this.synths.melody.triggerAttackRelease("G4", "8n", time);
+
+                stepCounter++;
+            }, "16n");
             
             this.bgmLoop.start(0);
             Tone.Transport.start();
@@ -368,8 +396,10 @@
         playPocket() {
             if(this.initialized) {
                 let now = Tone.now();
+                // Rate Limiter: Pastikan suara saku tidak dipicu berulang kali dalam waktu bersamaan
+                // Menambahkan buffer 0.1 detik untuk menghindari penumpukan node
                 this.synths.pocket.triggerAttackRelease("C6", "16n", now);
-                this.synths.pocket.triggerAttackRelease("E6", "8n", now + 0.1);
+                this.synths.pocket.triggerAttackRelease("E6", "8n", now + 0.15); // Menggeser waktu pemanggilan kedua lebih jauh
             }
         }
     };
