@@ -302,6 +302,7 @@
         }
     }
 
+    /* PENTING: Semua logika render dipindah ke fungsi utama draw() */
     function drawEffects() {
         for(let i = particles.length - 1; i >= 0; i--) {
             let p = particles[i];
@@ -369,6 +370,7 @@
             }
         }
 
+        // Animasi Tangan Geser (Placement)
         if (isPlacingStriker && !isDraggingToPlace && !(turn === 2 && isPVE)) {
             tutorialAnimTime += 0.05;
             let baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
@@ -392,6 +394,7 @@
             ctx.restore();
         }
 
+        // Animasi Tutorial Menarik Tembakan (Aiming Demo)
         if (!isPlacingStriker && !isAiming && !isMoving && !(turn === 2 && isPVE) && striker.active) {
             pullTutorialAnimTime += 0.03;
             let cycle = pullTutorialAnimTime % 1.5; 
