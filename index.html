@@ -109,11 +109,6 @@
         ✖️
     </button>
 
-    <!-- Tombol Putar Papan (Pojok Kiri Atas - Sebelah Tombol Berhenti) -->
-    <button id="btn-flip" class="absolute top-4 left-20 bg-white/20 hover:bg-white/40 p-3 rounded-full backdrop-blur-md z-[60] transition-all text-xl shadow-lg border-2 border-white/50 w-12 h-12 flex items-center justify-center hidden" title="Putar Papan 180°">
-        🔄
-    </button>
-
     <!-- Notifikasi Pop-up -->
     <div id="toast-message" class="absolute top-6 left-1/2 transform -translate-x-1/2 text-white px-8 py-3 rounded-full font-extrabold text-sm md:text-base shadow-2xl border-4 border-white/50 opacity-0 transition-all duration-300 scale-90 whitespace-nowrap z-50">
         Pesan Info
@@ -170,7 +165,7 @@
             <div class="text-xs md:text-sm text-white/90 bg-black/20 p-4 rounded-2xl w-full mb-6 space-y-3">
                 <p><strong>🎯 Tujuan:</strong> Masukkan semua koin warnamu ke dalam lubang!</p>
                 <p><strong>🕹️ Kontrol:</strong> Geser mouse/jari di garis bawah untuk menaruh striker. Klik <b>DIMANA SAJA</b> lalu tarik ke belakang untuk membidik secara bebas.</p>
-                <p><strong>🔄 Posisi:</strong> Gunakan tombol Putar di pojok kiri atas untuk membalik papan ke arahmu!</p>
+                <p><strong>🔄 Rotasi:</strong> Papan akan berputar secara otomatis 180° saat giliranmu tiba jika bermain melawan teman.</p>
                 <ul class="list-disc list-inside space-y-1 font-semibold ml-1 text-yellow-100">
                     <li>Kamu harus menyentuh koinmu lebih dulu.</li>
                     <li>Meleset atau sentuh koin musuh = Pelanggaran (Koin dikembalikan).</li>
@@ -215,7 +210,6 @@
     const btnRestart = document.getElementById('btn-restart');
     const btnMenu = document.getElementById('btn-menu');
     const btnStop = document.getElementById('btn-stop');
-    const btnFlip = document.getElementById('btn-flip');
     const btnHowto = document.getElementById('btn-howto');
     const btnHowtoBack = document.getElementById('btn-howto-back');
     const btnMute = document.getElementById('btn-mute');
@@ -236,7 +230,7 @@
     let turn = 1; // 1 = P1(Putih), 2 = P2/Bot(Hitam)
     let scores = { 1: 0, 2: 0 };
     let piecesLeft = { 1: 9, 2: 9, 3: 1 };
-    let isBoardFlipped = false; // State rotasi kamera (Papan Putar)
+    let isBoardFlipped = false; // State rotasi kamera otomatis
     
     // State Kontrol
     let isPlacingStriker = false;
@@ -561,8 +555,8 @@
         
         for (let i = 0; i < 12; i++) {
             let a = (i * 30) * Math.PI / 180;
-            let type = (i % 4 === 0 || i % 4 === 1) ? 1 : 2;
-            if (i > 6) type = type === 1 ? 2 : 1;
+            // Memastikan lingkaran luar selang-seling sempurna (6 koin putih & 6 koin hitam)
+            let type = i % 2 === 0 ? 2 : 1; 
             let color = type === 1 ? colorWhitePiece : colorBlackPiece;
             let dist = i % 2 === 0 ? (pr * 4.2) : (pr * 3.6);
             pieces.push({ x: cx + Math.cos(a) * dist, y: cy + Math.sin(a) * dist, radius: pr, vx: 0, vy: 0, mass: 1, type: type, active: true, color: color });
@@ -576,6 +570,18 @@
         firstHitPiece = null; 
         isDraggingToPlace = false;
         tutorialAnimTime = 0;
+
+        // --- SISTEM ROTASI OTOMATIS ---
+        // Jika mode PvP dan sekarang giliran P2 (Hitam), putar papan 180 derajat
+        // Jika giliran P1 atau bermain dengan Bot, biarkan posisi normal (0 derajat)
+        if (!isPVE && turn === 2) {
+            isBoardFlipped = true;
+            canvasContainer.style.transform = 'rotate(180deg)';
+        } else {
+            isBoardFlipped = false;
+            canvasContainer.style.transform = 'rotate(0deg)';
+        }
+        // -----------------------------
         
         const baselineY = turn === 1 ? boardSize * 0.85 : boardSize * 0.15;
         striker.y = baselineY; 
@@ -641,7 +647,6 @@
         return { x, y };
     }
 
-    // Fungsi Kunci: Memulai peletakan ATAU pembidikan secara bebas (Anywhere Drag)
     function handleStart(e) {
         if (!isPlaying || isMoving || (turn === 2 && isPVE)) return;
         const pos = getMousePos(e);
@@ -655,7 +660,6 @@
             return;
         }
 
-        // FITUR ANYWHERE DRAG: Pemain dapat menekan DI MANA SAJA untuk membidik
         if (!isPlacingStriker && !isAiming && !isMoving) {
             isAiming = true; dragStart = pos; dragCurrent = pos;
         }
@@ -686,7 +690,6 @@
             isDraggingToPlace = false;
             isPlacingStriker = false;
             audioEngine.playDrop();
-            // Instruksi diperbarui untuk Anywhere Drag
             strikerMessage.innerText = "2. Sentuh DIMANA SAJA & tarik untuk membidik!";
             strikerMessage.style.background = "linear-gradient(to right, #10b981, #059669)"; 
             return;
@@ -719,13 +722,11 @@
         if (isPlaying && (isAiming || isDraggingToPlace)) { e.preventDefault(); } 
         handleMove(e); 
     }, {passive: false});
+    window.addEventListener('touchmove', (e) => { 
+        if (isPlaying && (isAiming || isDraggingToPlace)) { e.preventDefault(); } 
+        handleMove(e); 
+    }, {passive: false});
     window.addEventListener('touchend', handleEnd);
-
-    btnFlip.addEventListener('click', () => {
-        isBoardFlipped = !isBoardFlipped;
-        canvasContainer.style.transform = isBoardFlipped ? 'rotate(180deg)' : 'rotate(0deg)';
-        showToast(isBoardFlipped ? "Papan diputar ke arah P2 🔄" : "Posisi papan normal 🔄", "linear-gradient(to right, #8b5cf6, #ec4899)");
-    });
 
     function botTurn() {
         if (!isPlaying) return;
@@ -963,7 +964,7 @@
     function endGame(winner) {
         isPlaying = false; gameOverOverlay.classList.remove('hidden');
         topBar.classList.add('opacity-0', 'pointer-events-none'); bottomBar.classList.add('opacity-0', 'pointer-events-none');
-        btnStop.classList.add('hidden'); btnFlip.classList.add('hidden');
+        btnStop.classList.add('hidden');
         document.getElementById('final-p1').innerText = scores[1]; document.getElementById('final-p2').innerText = scores[2];
         
         let winText = winner === 1 ? "Pemain 1 Menang!" : (isPVE ? "Robot Menang!" : "Pemain 2 Menang!");
@@ -1059,7 +1060,7 @@
         topBar.classList.add('opacity-0', 'pointer-events-none'); bottomBar.classList.add('opacity-0', 'pointer-events-none'); 
         toastEl.classList.remove('opacity-100', 'scale-100', 'translate-y-0');
         toastEl.classList.add('opacity-0', 'scale-90', '-translate-y-4');
-        btnStop.classList.add('hidden'); btnFlip.classList.add('hidden');
+        btnStop.classList.add('hidden');
     });
 
     btnMute.addEventListener('click', async () => {
@@ -1069,11 +1070,7 @@
     });
 
     function startGame() {
-        // Reset Board Flip
-        isBoardFlipped = false;
-        canvasContainer.style.transform = 'rotate(0deg)';
-
-        audioEngine.init(); // <--- PERBAIKAN: Menggunakan objek mesin audio yang baru
+        audioEngine.init(); 
         resize(); setupGame(); isPlaying = true;
         
         menuOverlay.classList.add('hidden'); gameOverOverlay.classList.add('hidden'); 
@@ -1081,9 +1078,6 @@
         bottomBar.classList.remove('opacity-0', 'pointer-events-none');
         btnStop.classList.remove('hidden'); 
         
-        // Hanya munculkan tombol putar di mode PVP
-        if(!isPVE) { btnFlip.classList.remove('hidden'); } else { btnFlip.classList.add('hidden'); }
-
         toastEl.classList.remove('opacity-100', 'scale-100', 'translate-y-0');
         toastEl.classList.add('opacity-0', 'scale-90', '-translate-y-4');
     }
